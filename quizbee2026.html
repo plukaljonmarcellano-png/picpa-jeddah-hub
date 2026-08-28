@@ -155,8 +155,7 @@ footer .mark{width:22px;height:22px}
     <span class="chip"><i></i>PISTA</span>
   </div>
   <div class="btnrow">
-    <a class="btn g" id="ics" href="#" download="PICPA-WR-Quiz-Bee-2026.ics">＋ Add to calendar</a>
-    <a class="btn" href="#programme">View programme ↓</a>
+    <a class="btn g" href="#programme">View programme ↓</a>
   </div>
 
   <nav class="tabs" aria-label="Sections"><div class="in">
@@ -281,16 +280,6 @@ footer .mark{width:22px;height:22px}
 
 <script>
 (function(){
-  // ---- Add-to-calendar (.ics, Jeddah time) ----
-  var ics=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//PICPA Jeddah//Quiz Bee 2026//EN","BEGIN:VEVENT",
-    "UID:picpa-wr-quizbee-2026@picpa-jeddah","DTSTAMP:20260827T000000Z",
-    "DTSTART;TZID=Asia/Riyadh:20260829T080000","DTEND;TZID=Asia/Riyadh:20260829T113000",
-    "SUMMARY:PICPA-WR Quiz Bee 2026 – Minds in Motion",
-    "LOCATION:International Philippine School in Jeddah",
-    "DESCRIPTION:Digital programme: "+location.href.split('#')[0],
-    "END:VEVENT","END:VCALENDAR"].join("\r\n");
-  document.getElementById('ics').href="data:text/calendar;charset=utf-8,"+encodeURIComponent(ics);
-
   // ---- Live "happening now" highlight (event day, Jeddah time) ----
   var EVENT_DATE="2026-08-29";
   function jeddahNow(){
