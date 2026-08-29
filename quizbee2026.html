@@ -281,13 +281,13 @@ footer .mark{width:22px;height:22px}
 <script>
 (function(){
   // ---- Live "happening now" highlight (event day, Jeddah time) ----
-  var EVENT_DATE="2026-08-29";
+  var EVENT_DATE="2026-08-29";var DELAY_MIN=12;
   function jeddahNow(){
     try{
       var p=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(new Date());
       var o={};p.forEach(function(x){o[x.type]=x.value});
-      return {date:o.year+"-"+o.month+"-"+o.day,min:(+o.hour%24)*60+(+o.minute)};
-    }catch(e){var d=new Date();return {date:d.toISOString().slice(0,10),min:d.getHours()*60+d.getMinutes()};}
+      return {date:o.year+"-"+o.month+"-"+o.day,min:(+o.hour%24)*60+(+o.minute)-DELAY_MIN};
+    }catch(e){var d=new Date();return {date:d.toISOString().slice(0,10),min:d.getHours()*60+d.getMinutes()-DELAY_MIN};}
   }
   function toMin(s){if(!s)return null;var a=s.split(':');return (+a[0])*60+(+a[1]);}
   var items=[].slice.call(document.querySelectorAll('.tl-item[data-s]'));
@@ -304,7 +304,7 @@ footer .mark{width:22px;height:22px}
       else if(!next){next=el;}
     });
     if(cur){
-      lt.innerHTML="Now: "+cur.querySelector('.tl-title').textContent+(next?"<small>Up next "+next.dataset.s+" · "+next.querySelector('.tl-title').textContent+"</small>":"");
+      lt.innerHTML="Now: "+cur.querySelector('.tl-title').textContent+"<small>"+(DELAY_MIN>0?"Running ~"+DELAY_MIN+" min behind schedule · ":"")+(next?"Up next: "+next.querySelector('.tl-title').textContent:"")+"</small>";
       live.classList.add('show');
     }else if(next){
       lt.innerHTML="Programme starts at "+next.dataset.s+"<small>"+next.querySelector('.tl-title').textContent+"</small>";
