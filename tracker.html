@@ -543,7 +543,7 @@ select.att-Excused{background:var(--amber-soft);color:var(--amber);font-weight:6
 </head>
 <body>
 <div id="app"></div>
-<script type="application/json" id="data">{"settings":{"org":"PICPA Western Region","term":"2026–2027","theme":"EMPOWER","tagline":"Elevating the Filipino CPA Towards Ethical Leadership and Global Excellence","termStart":"2026-10","currency":"SAR","themeV2":true},"lists":{"categories":["GMM","Officers' meeting","Professional development","AI training","Knowledge sharing","Fellowship","Student activities","Community service","PICPA events","Administrative"],"meetingTypes":["Officers' meeting","General Membership Meeting","Committee meeting","Other"],"projectCategories":["E — Excellence","M — Mentorship","P — People & Community","O — Opportunities","W — Wisdom Sharing","E — Empowerment through Technology","R — Responsibility & Impact"]},"people":[],"projects":[],"meetings":[],"tasks":[],"activities":[],"leaves":[],"updatedAt":"2026-01-01T00:00:00.000Z","patchOfficers1":true,"patchOfficers2":true,"patchPipeline6":true,"patchKapehan":true,"patchPowerBI":true,"patchLeaves1":true,"patchGmmDate":true,"patchAgendaLink1":true,"patchSortPipe1":true,"patchHubFirst":true,"patchEvents1":true,"patchEvents2":true,"patchMinutes3":true,"patchApproved5":true,"patchAdjourn4":true,"cleanEmpty1":true,"rosterV2":true}</script>
+<script type="application/json" id="data">{"settings":{"org":"PICPA Western Region","term":"2026–2027","theme":"EMPOWER","tagline":"Elevating the Filipino CPA Towards Ethical Leadership and Global Excellence","termStart":"2026-10","currency":"SAR","themeV2":true},"lists":{"categories":["GMM","Officers' meeting","Professional development","AI training","Knowledge sharing","Fellowship","Student activities","Community service","PICPA events","Administrative"],"meetingTypes":["Officers' meeting","General Membership Meeting","Committee meeting","Other"],"projectCategories":["E — Excellence","M — Mentorship","P — People & Community","O — Opportunities","W — Wisdom Sharing","E — Empowerment through Technology","R — Responsibility & Impact"]},"people":[],"projects":[],"meetings":[],"tasks":[],"activities":[],"leaves":[],"updatedAt":"2026-01-01T00:00:00.000Z","patchOfficers1":true,"patchOfficers2":true,"patchPipeline6":true,"patchKapehan":true,"patchPowerBI":true,"patchLeaves1":true,"patchGmmDate":true,"patchAgendaLink1":true,"patchSortPipe1":true,"patchHubFirst":true,"patchEvents1":true,"patchEvents2":true,"patchMinutes3":true,"patchApproved5":true,"patchAdjourn4":true,"cleanEmpty1":true,"rosterV2":true,"patchHubFirst2":true,"patchGmmMeeting1":true}</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok" crossorigin="anonymous"></script>
 <script>window.TRACKER_CLOUD={url:"https://cpumktocfhbnzocyztlb.supabase.co",key:"sb_publishable_un5TqUZ6gEcFtulfGlh-Jg_D8Q6jWrC",hub:"./"};</script>
 <script id="app-script">
@@ -616,7 +616,7 @@ function patchEvents1(){return false;}
 function patchEvents2(){return false;}
 function patchMinutes3(){return false;}
 function projSortKey(p){
-  if(/picpa hub/i.test(p.name||""))return "";
+  if(isHubProject(p))return "";
   if(/recognition/i.test(p.name||""))return "~";
   var k="9999";projActs(p.id).forEach(function(a){var x=a.date||(a.month?a.month+"-32":"");if(x&&x<k)k=x;});return k;}
 function thirdThursday(ym){var p=ym.split("-"),d=new Date(+p[0],+p[1]-1,1);return ym+"-"+pad(1+(4-d.getDay()+7)%7+14);}
@@ -1788,6 +1788,30 @@ app.addEventListener("click",function(ev){
 });
 
 /* ---------- boot ---------- */
+function isHubProject(p){return /\bpicpa(-wr)?\s+hub\b/i.test((p&&p.name)||"");}
+function patchHubFirst2(){
+  if(S.patchHubFirst2)return false;
+  function front(arr,get){var i=-1;arr.forEach(function(x,j){if(i<0&&isHubProject(get(x)))i=j;});if(i>0)arr.unshift(arr.splice(i,1)[0]);}
+  front(S.projects,function(p){return p;});
+  S.meetings.forEach(function(m){m.agenda.forEach(function(a){if(/project pipeline|calendar of activities/i.test(a.title||""))front(a.projectIds,proj);});});
+  S.patchHubFirst2=true;return true;
+}
+function patchGmmMeeting1(){
+  if(S.patchGmmMeeting1)return false;
+  S.patchGmmMeeting1=true;
+  var g=S.meetings.filter(function(m){return m.type==="General Membership Meeting";})[0];
+  if(!g){
+    g=newMeeting("General Membership Meeting");
+    g.title="1st General Membership Meeting & Induction Ceremony";
+    ["presiding","secretary","callTime","adjournTime","quorum","prevMinutes","guests","announcements","agendaMovedBy","agendaSecondedBy","agendaNote","current","siteVisitDate","siteVisitTime","siteVisitTeam","venueChosen"].forEach(function(k){if(g[k]==null)g[k]="";});
+    g.agendaStatus="Draft";g.attendance={};g.attendees=[];g.others=[];g.annc=[];g.venueOptions=[];
+    ["Registration and opening","Induction of the 2026–2027 officers","EMPOWER: direction for 2026–2027","Project highlights and call for volunteers","Fellowship"].forEach(function(t){newAgenda(g,t);});
+  }
+  if(!g.date)g.date="2026-10-23";
+  if(!g.time)g.time="16:00";
+  S.activities.forEach(function(a){if(!a.date&&/hub database/i.test(a.title||"")&&/gmm/i.test(a.title||"")){a.date=g.date;a.month=g.date.slice(0,7);}});
+  return true;
+}
 function normalize(){
   S.settings=S.settings||{};S.lists=S.lists||{pillars:[],categories:[],meetingTypes:[]};
   var OLDCATS=["Flagship initiative","Program (recurring)","Event","Competition","Outreach / CSR","Chapter operations"];
@@ -1847,6 +1871,8 @@ function normalize(){
   if(patchHubFirst())PATCHED=true;
   if(patchEvents1())PATCHED=true;
   if(patchEvents2())PATCHED=true;
+  if(patchHubFirst2())PATCHED=true;
+  if(patchGmmMeeting1())PATCHED=true;
   if(!S.patchApproved5){var m5=meeting("M01");if(m5)m5.showApproved=false;S.patchApproved5=true;PATCHED=true;}
   if(!S.settings.themeV2){if(!S.settings.tagline||S.settings.tagline==="Empowering CPAs. Enabling Excellence. Creating Impact.")S.settings.tagline="Elevating the Filipino CPA Towards Ethical Leadership and Global Excellence";S.settings.themeV2=true;PATCHED=true;}
   if(!S.patchAdjourn4){var m4=meeting("M01");if(m4&&!m4.adjournTime)m4.adjournTime="20:56";S.patchAdjourn4=true;PATCHED=true;}
