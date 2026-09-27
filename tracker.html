@@ -413,6 +413,18 @@ select.st-Tentative{background:var(--amber-soft);color:var(--amber);font-weight:
 @container ed (max-width:900px){.ag-sched,.ag-sched-add{margin-left:12px;padding-left:10px}.ag-sched-add{margin-left:0}}
 .when-g.dt{grid-template-columns:170px 130px minmax(0,1fr)}
 .pm-cell{font-weight:600}
+.ev.hb{background:var(--blue-soft);color:var(--blue-ink);border:1px solid var(--blue-ink);text-decoration:none;display:block}
+.ev.hb b{font-family:var(--mono);font-size:9.5px;letter-spacing:.5px}
+.hubdot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:4px;vertical-align:1px;box-shadow:0 0 0 1.5px var(--surface)}
+.hubctl{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:13px}
+.hubctl.sm{grid-column:1/-1;margin:0 0 2px;font-size:12px;gap:6px}
+.hubctl .hubsw{display:inline-flex;align-items:center;gap:6px;font-weight:600;cursor:pointer;color:var(--ink)}
+.hubctl select.hubcat{width:auto;min-width:150px}
+.hubctl.sm select.hubcat{min-width:130px;font-size:12px;padding:3px 6px}
+.hubtime{display:inline-flex;align-items:center;gap:6px;color:var(--muted)}
+.hubtime input{width:auto;font-size:12px;padding:3px 6px}
+.hubst .good{color:var(--green-ink);font-weight:600}
+.hubst .bad{color:var(--amber);font-weight:600}
 .gate{min-height:100vh;display:grid;place-items:center;padding:24px 16px;background:var(--bg)}
 .gate-card{max-width:420px;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:28px 24px;text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center}
 .gate-card img{width:56px;height:auto}
@@ -577,6 +589,7 @@ var EMBED=JSON.parse(document.getElementById("data").textContent);
 var S=clone(EMBED);
 var MODE="local";          // "local" | "artifact" | "readonly" | "cloud"
 var SB=null,CV=0,CSAVE=null,CPEND=false,CUSER="",CINFO={};
+var HUBEV=[],HUBLINK={},HUBST={},HUBQ={},HUBDEFER=false;
 var ART=null, DL=null, dirty=false, busy=false, banner=null;
 var U={tab:"meetings",meeting:"M01",open:{},calMonth:"",calView:"year",calTasks:true,pView:"list",pf:{q:"",status:"",pillar:"",lead:"",category:"",decision:"",kind:""},tf:{owner:"",status:"open",project:""},confirm:"",closing:""};
 var app=document.getElementById("app");
@@ -667,6 +680,70 @@ function buildDoc(state){
 /* ---------- Hub (Supabase) mode ---------- */
 function gate(html){app.innerHTML='<div class="gate"><div class="gate-card"><img src="'+h(S.settings.logo||APP_LOGO)+'" alt=""><h1>'+h(S.settings.org||"PICPA")+' · Chapter Tracker</h1>'+html+'</div></div>';}
 function hubLink(t){var c=window.TRACKER_CLOUD||{};return '<a class="btn primary" href="'+h(c.hub||"./")+'">'+h(t)+'</a>';}
+/* ---------- Hub calendar link (Programs & Events = public.announcements) ---------- */
+var HUBCAT={cpd_program:"CPD program",seminar_training:"Seminar / Training",general_meeting:"General meeting",social_event:"Social event",announcement:"Announcement",news:"News",project:"Project"};
+function hubObj(kind,id){return kind==="mtg"?meeting(id):act(id);}
+function riyadh(iso){var d=new Date(new Date(iso).getTime()+3*3600000).toISOString();return {date:d.slice(0,10),time:d.slice(11,16)};}
+function hubDefaultCat(kind,o){
+  if(kind==="mtg")return "general_meeting";
+  var c=(o.category||"")+" "+(o.title||"");
+  if(/knowledge|kapehan|seminar|training|professional|lecture|forum|\bai\b/i.test(c))return "seminar_training";
+  if(/fellowship|sport|bowling|pickle|legends|social|student|quiz|olympics|gathering|party/i.test(c))return "social_event";
+  var p=o.projectId&&proj(o.projectId);if(p&&p.kind!=="Event")return "project";
+  return "announcement";}
+function hubWhen(kind,o){var d=o.date;if(!d)return null;var t=kind==="mtg"?(o.callTime||o.time||""):(o.time||"");return {date:d,time:t,iso:d+"T"+(t||"00:00")+":00+03:00"};}
+function hubCtl(kind,o,compact){
+  if(MODE!=="cloud")return "";
+  var ref=kind+":"+o.id,on=!!(o.hub&&o.hub.on),cat=(o.hub&&o.hub.cat)||hubDefaultCat(kind,o);
+  var st='<span class="hubst" id="hubst-'+h(ref.replace(":","-"))+'">'+hubStText(ref,o,kind)+'</span>';
+  var sw='<label class="hubsw" title="Show this on the Hub\'s Programs & Events for members"><input type="checkbox" data-hub="'+kind+'|'+h(o.id)+'"'+(on?" checked":"")+'> '+(compact?'Hub':'Post on the Hub (Programs &amp; Events)')+'</label>';
+  var cs=on?'<select class="f hubcat" data-hubcat="'+kind+'|'+h(o.id)+'" aria-label="Hub category">'+Object.keys(HUBCAT).map(function(k){return opt(k,HUBCAT[k],cat);}).join("")+'</select>':'';
+  var tm=on&&kind==="act"?'<label class="hubtime">Start time'+fld("act",o.id,"time",o.time||"",{type:"time",aria:"Start time for the Hub post"})+'</label>':'';
+  return '<div class="hubctl'+(compact?" sm":"")+'">'+sw+cs+tm+st+'</div>';}
+function hubStText(ref,o,kind){
+  var s=HUBST[ref],on=!!(o.hub&&o.hub.on);
+  if(s==="busy")return "Updating the Hub…";
+  if(s&&s.indexOf("err:")===0)return '<span class="bad">Hub: '+h(s.slice(4))+'</span>';
+  if(on&&!o.date)return '<span class="bad">Set an exact date to post</span>';
+  if(on)return HUBLINK[ref]&&HUBLINK[ref].is_published?'<span class="good">On the Hub</span>':'Will post shortly';
+  return compact0(kind)?'':'<span class="muted">Only officers see it</span>';}
+function compact0(kind){return kind==="act";}
+function hubMark(o){return o&&o.hub&&o.hub.on?'<i class="hubdot" title="Posted on the Hub"></i>':'';}
+function hubLoad(){
+  if(MODE!=="cloud"||!SB)return Promise.resolve();
+  return SB.from("announcements").select("id,title,category,event_date,venue,is_published,tracker_ref").not("event_date","is",null).then(function(r){
+    if(r.error||!r.data)return;
+    var ev=[],link={};
+    r.data.forEach(function(x){var w=riyadh(x.event_date),row={id:x.id,title:x.title,category:x.category,date:w.date,time:w.time,venue:x.venue||"",is_published:x.is_published};
+      if(x.tracker_ref)link[x.tracker_ref]=row;else if(x.is_published)ev.push(row);});
+    ev.sort(function(a,b){return a.date<b.date?-1:1;});
+    var changed=JSON.stringify([ev,link])!==JSON.stringify([HUBEV,HUBLINK]);
+    HUBEV=ev;HUBLINK=link;
+    if(changed)hubRender();
+  });}
+function hubRender(){var a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&a.type!=="checkbox"){HUBDEFER=true;return;}HUBDEFER=false;render();}
+function hubQueue(kind,id,ms){var ref=kind+":"+id;clearTimeout(HUBQ[ref]);HUBQ[ref]=setTimeout(function(){hubPush(kind,id);},ms==null?1500:ms);}
+function hubStPaint(ref,kind){var el=document.getElementById("hubst-"+ref.replace(":","-")),o=hubObj(kind,ref.split(":")[1]);if(el&&o)el.innerHTML=hubStText(ref,o,kind);}
+function hubPush(kind,id){
+  var o=hubObj(kind,id),ref=kind+":"+id;if(!SB||MODE!=="cloud")return;
+  var linked=HUBLINK[ref],on=!!(o&&o.hub&&o.hub.on);
+  function fin(r){if(r&&r.error)HUBST[ref]="err:"+(r.error.message||"could not save");else delete HUBST[ref];hubLoad().then(function(){hubStPaint(ref,kind);});hubStPaint(ref,kind);}
+  function upd(rid,patch){HUBST[ref]="busy";hubStPaint(ref,kind);return SB.from("announcements").update(patch).eq("id",rid).select("id").then(fin,function(){fin({error:{message:"network error"}});});}
+  if(!o||!on){if(linked&&linked.is_published)upd(linked.id,{is_published:false});return;}
+  var w=hubWhen(kind,o);
+  if(!w){if(linked&&linked.is_published)upd(linked.id,{is_published:false});else hubStPaint(ref,kind);return;}
+  var row={title:o.title||"Untitled",category:o.hub.cat||hubDefaultCat(kind,o),venue:(kind==="mtg"?o.venue:"")||null,is_published:true,tracker_ref:ref,event_date:w.iso};
+  // keep a time an officer set on the Hub when the tracker has only a date
+  if(linked&&!w.time&&linked.date===w.date)delete row.event_date;
+  if(!row.venue)delete row.venue;
+  if(linked)return upd(linked.id,row);
+  // an existing Hub post on the same day for the same thing is adopted, not duplicated
+  function words(t){return String(t||"").toLowerCase().split(/[^a-z0-9]+/).filter(function(x){return x.length>3&&!/^(picpa|chapter|jeddah|with|from|during|launch|meeting)$/.test(x);});}
+  var mine=words(o.title),cand=HUBEV.filter(function(e){return e.date===w.date&&(e.category===row.category||words(e.title).some(function(x){return mine.indexOf(x)>=0;}));})[0];
+  if(cand)return upd(cand.id,row);
+  HUBST[ref]="busy";hubStPaint(ref,kind);
+  SB.from("announcements").insert(row).select("id").then(fin,function(){fin({error:{message:"network error"}});});
+}
 function cloudBoot(){
   var C=window.TRACKER_CLOUD;MODE="cloud";
   gate('<p>Signing you in…</p>');
@@ -690,8 +767,9 @@ function cloudBoot(){
 function cloudLoad(first,note){
   return SB.from("tracker_state").select("data,version,updated_at,updated_by").eq("id","main").maybeSingle().then(function(r){
     if(r.error){if(first)gate('<p>Could not load the tracker: '+h(r.error.message)+'</p>');else{banner={kind:"warn",text:"Could not refresh from the Hub: "+r.error.message};render();}return;}
+    hubLoad();
     if(!r.data){CV=0;if(first){banner={kind:"info",text:"The tracker has no data yet. Go to Settings & data → Import data (JSON) to load your tracker file."};U.tab="data";}render();return;}
-    CV=r.data.version;CINFO={by:r.data.updated_by,at:r.data.updated_at};
+    CV=r.data.version;CINFO={by:r.data.updated_by,at:r.data.updated_at};hubLoad();
     PATCHED=false;S=r.data.data;normalize();dirty=false;
     if(note)banner={kind:"info",text:note};
     render();
@@ -722,6 +800,7 @@ function cloudConflict(mine){
   });
 }
 function cloudPoll(){
+  if(MODE==="cloud"&&SB){if(HUBDEFER)hubRender();hubLoad();}
   if(MODE!=="cloud"||!SB||busy||dirty)return;
   SB.from("tracker_state").select("version,updated_by").eq("id","main").maybeSingle().then(function(r){
     if(r.data&&r.data.version>CV&&!busy&&!dirty)cloudLoad(false,"Updated with the latest changes from "+(r.data.updated_by||"another admin")+".");
@@ -808,7 +887,7 @@ function meetingDetail(m){
    '<div class="when-g">'+
    '<label class="lab">Date'+fld("meeting",m.id,"date",m.date,{type:"date",cls:m.date?"":"need"})+'</label>'+
    '<label class="lab">Start time'+fld("meeting",m.id,"time",m.time,{type:"time",cls:m.time?"":"need"})+'</label>'+
-   '<label class="lab venue">Venue'+fld("meeting",m.id,"venue",m.venue,{ph:"Type the venue, e.g. hotel or hall name, city",cls:m.venue?"":"need",aria:"Venue"})+'</label></div></div>'+
+   '<label class="lab venue">Venue'+fld("meeting",m.id,"venue",m.venue,{ph:"Type the venue, e.g. hotel or hall name, city",cls:m.venue?"":"need",aria:"Venue"})+'</label></div>'+hubCtl("mtg",m)+'</div>'+
    '<div class="meta">'+
    '<label class="lab">Title'+fld("meeting",m.id,"title",m.title,{})+'</label>'+
    '<label class="lab">Type'+sel("meeting",m.id,"type",optsList(S.lists.meetingTypes,m.type))+'</label>'+
@@ -1173,9 +1252,10 @@ function vCalendar(){
   var yr='<div class="yr">'+tm.map(function(m){var c=S.activities.filter(function(a){return actMonth(a)===m;}).length+S.meetings.filter(function(x){return x.date&&x.date.slice(0,7)===m;}).length+siteVisits().filter(function(v){return v.date.slice(0,7)===m;}).length+leavesIn(m).length;return '<button data-a="calm" data-v="'+m+'" aria-pressed="'+(m===ym)+'"><span>'+fmtMonth(m)+'</span><b>'+c+'</b></button>';}).join("")+'</div>';
   var first=new Date(y,mo-1,1), start=first.getDay(), days=new Date(y,mo,0).getDate(), td=todayISO();
   var ev={};function push(d,x){(ev[d]=ev[d]||[]).push(x);}
-  S.meetings.forEach(function(m){if(m.date&&m.date.slice(0,7)===ym)push(m.date,'<button class="ev m" data-a="goto-meeting" data-v="'+m.id+'" title="'+h(m.id+" · "+m.title)+'">'+h(m.title)+'</button>');});
-  S.activities.forEach(function(a){if(a.date&&a.date.slice(0,7)===ym)push(a.date,'<button class="ev a" data-a="goto-act" data-v="'+a.id+'" title="'+h(a.id+" · "+a.title)+' — click to edit">'+h(a.title)+'</button>');});
+  S.meetings.forEach(function(m){if(m.date&&m.date.slice(0,7)===ym)push(m.date,'<button class="ev m" data-a="goto-meeting" data-v="'+m.id+'" title="'+h(m.id+" · "+m.title)+'">'+hubMark(m)+h(m.title)+'</button>');});
+  S.activities.forEach(function(a){if(a.date&&a.date.slice(0,7)===ym)push(a.date,'<button class="ev a" data-a="goto-act" data-v="'+a.id+'" title="'+h(a.id+" · "+a.title)+' — click to edit">'+hubMark(a)+h(a.title)+'</button>');});
   siteVisits().forEach(function(v){if(v.date.slice(0,7)===ym)push(v.date,'<button class="ev v" data-a="goto-meeting" data-v="'+h(v.agenda?v.agenda.split("-")[0]:v.m.id)+'" title="'+h(v.title+(v.time?" · "+endTime(v.time,0):"")+(v.team?" · "+v.team:""))+'">'+(v.time?h(endTime(v.time,0))+' ':'')+h(v.title)+'</button>');});
+  HUBEV.forEach(function(e){if(e.date.slice(0,7)===ym)push(e.date,hubChip(e));});
   leavesIn(ym).forEach(function(l){var t=l.to||l.from;for(var dd=1;dd<=31;dd++){var iso=ym+"-"+pad(dd);if(iso>=l.from&&iso<=t)push(iso,'<button class="ev l" data-a="goto-leave" data-v="'+l.id+'" title="'+h(leaveName(l)+" · vacation "+leaveRange(l)+(l.note?" · "+l.note:""))+'">'+h(leaveName(l).split(" ")[0])+'</button>');}});
   if(U.calTasks)S.tasks.forEach(function(t){if(t.visitFor)return;if(t.due&&t.due.slice(0,7)===ym&&isOpenTask(t))push(t.due,'<button class="ev t" data-a="goto-task" data-v="'+t.id+'" title="'+h(t.id+" · "+t.title+(t.owner?" · "+pname(t.owner):""))+' — click to open">'+h(t.title)+'</button>');});
   var g='<div class="grid7">'+DOW.map(function(d){return '<div class="dow">'+d+'</div>';}).join("");
@@ -1184,12 +1264,12 @@ function vCalendar(){
     var iso=ym+"-"+pad(dn);g+='<div class="day'+(iso===td?" today":"")+'"><span class="dn">'+dn+'</span>'+(ev[iso]||[]).join("")+'</div>';}
   g+='</div>';
   var tbd=S.activities.filter(function(a){return !a.date&&a.month===ym;});
-  var strip=tbd.length?'<div class="tbd"><span class="tbd-l">This month · date to be set</span>'+tbd.map(function(a){return '<button class="ev a" data-a="goto-act" data-v="'+a.id+'" title="'+h(a.id+" · "+a.title)+' — click to edit">'+(a.projectId?'<b>'+h(a.projectId)+'</b> ':'')+h(a.title)+'</button>';}).join("")+'</div>':'';
+  var strip=tbd.length?'<div class="tbd"><span class="tbd-l">This month · date to be set</span>'+tbd.map(function(a){return '<button class="ev a" data-a="goto-act" data-v="'+a.id+'" title="'+h(a.id+" · "+a.title)+' — click to edit">'+hubMark(a)+(a.projectId?'<b>'+h(a.projectId)+'</b> ':'')+h(a.title)+'</button>';}).join("")+'</div>':'';
   var monthActs=S.activities.filter(function(a){return actMonth(a)===ym;});
   var unsched=S.activities.filter(function(a){return !a.date&&!a.month;});
   var head='<div class="calhead">'+calViewSw()+'<button class="btn sm" data-a="calm" data-v="'+addMonths(ym,-1)+'" aria-label="Previous month">‹</button><h2>'+MONL[mo-1]+' '+y+'</h2><button class="btn sm" data-a="calm" data-v="'+addMonths(ym,1)+'" aria-label="Next month">›</button><span style="flex:1"></span>'+
    '<label class="legend"><input type="checkbox" data-a="caltasks"'+(U.calTasks?" checked":"")+'> Show task deadlines</label>'+
-   '<span class="legend"><span><i style="background:var(--navy)"></i>Meeting</span><span><i style="background:var(--blue-soft);border:1px solid var(--navy)"></i>Site visit</span><span><i style="background:var(--green-soft);border:1px solid var(--green)"></i>Activity</span><span><i style="background:var(--amber-soft);border:1px solid var(--amber)"></i>Task due</span><span><i style="background:var(--surface-2);border:1px dashed var(--muted)"></i>Vacation</span></span></div>';
+   '<span class="legend"><span><i style="background:var(--navy)"></i>Meeting</span><span><i style="background:var(--blue-soft);border:1px solid var(--navy)"></i>Site visit</span><span><i style="background:var(--green-soft);border:1px solid var(--green)"></i>Activity</span><span><i style="background:var(--amber-soft);border:1px solid var(--amber)"></i>Task due</span><span><i style="background:var(--surface-2);border:1px dashed var(--muted)"></i>Vacation</span><span><i style="background:var(--blue-soft);border:1px solid var(--blue-ink)"></i>Hub post</span></span></div>';
   if(U.calView!=="month")return vCalYear(tm,actMonth,unsched);
   return '<div class="panel"><div class="ph"><h2>Calendar of activities</h2><span class="muted">Term '+h(S.settings.term)+'</span></div><div class="pb" style="display:flex;flex-direction:column;gap:14px">'+yr+head+undatedMeetings()+strip+g+
    (function(){var vs=siteVisits().filter(function(v){return v.date.slice(0,7)===ym;});if(!vs.length)return "";
@@ -1206,6 +1286,7 @@ function leaveName(l){return pname(l.person)||"Officer";}
 function leaveClash(l){if(!l.from)return [];var t=l.to||l.from,r=[];
   S.meetings.forEach(function(m){if(m.date&&m.date>=l.from&&m.date<=t)r.push(m.id+" "+m.title+" ("+sDate(m.date)+")");});
   S.activities.forEach(function(a){if(a.date&&a.date>=l.from&&a.date<=t&&(a.owner===l.person))r.push(a.title+" ("+sDate(a.date)+")");});
+  HUBEV.forEach(function(e){if(e.date>=l.from&&e.date<=t)r.push("Hub: "+e.title+" ("+sDate(e.date)+")");});
   S.tasks.forEach(function(x){if(x.due&&x.due>=l.from&&x.due<=t&&isOpenTask(x)&&assignees(x).indexOf(l.person)>=0)r.push("Task "+x.id+" due "+sDate(x.due));});
   return r;}
 function personLeaves(pid){var td=todayISO();
@@ -1231,13 +1312,15 @@ function leaveEditor(){
    '<div class="addrow"><button class="btn sm" data-a="add-leave">+ Vacation</button></div>';
 }
 function calViewSw(){return '<span class="seg" role="group" aria-label="Calendar view"><button class="btn sm" data-a="calv" data-v="year" aria-pressed="'+(U.calView!=="month")+'">Year</button><button class="btn sm" data-a="calv" data-v="month" aria-pressed="'+(U.calView==="month")+'">Month</button></span>';}
+function hubChip(e,long){return '<a class="ev hb" href="'+h((window.TRACKER_CLOUD||{}).hub||"./")+'" target="_blank" rel="noopener" title="'+h("Hub post · "+(HUBCAT[e.category]||e.category)+" · "+e.title+(e.venue?" · "+e.venue:""))+'">'+(long?'<b>HUB</b> ':'')+h(e.title)+'</a>';}
 function vCalYear(tm,actMonth,unsched){
   var td=todayISO().slice(0,7);
   var cards=tm.map(function(ym){
     var it=[];
     S.meetings.forEach(function(m){if(m.date&&m.date.slice(0,7)===ym)it.push({d:m.date,k:"m",h:'<button class="ev m" data-a="goto-meeting" data-v="'+m.id+'" title="'+h(m.id+" · "+m.title)+'">'+h(m.title)+'</button>'});});
     siteVisits().forEach(function(v){if(v.date.slice(0,7)===ym)it.push({d:v.date,k:"v",h:'<button class="ev v" data-a="goto-meeting" data-v="'+h(v.agenda?v.agenda.split("-")[0]:v.m.id)+'" title="'+h(v.title+(v.team?" · "+v.team:""))+'">'+h(v.title)+'</button>'});});
-    S.activities.forEach(function(a){if(actMonth(a)===ym)it.push({d:a.date||"",k:"a",h:'<button class="ev a" data-a="goto-act" data-v="'+a.id+'" title="'+h(a.id+" · "+a.title)+' — click to edit">'+(a.projectId?'<b>'+h(a.projectId)+'</b> ':'')+h(a.title)+'</button>'});});
+    S.activities.forEach(function(a){if(actMonth(a)===ym)it.push({d:a.date||"",k:"a",h:'<button class="ev a" data-a="goto-act" data-v="'+a.id+'" title="'+h(a.id+" · "+a.title)+' — click to edit">'+hubMark(a)+(a.projectId?'<b>'+h(a.projectId)+'</b> ':'')+h(a.title)+'</button>'});});
+    HUBEV.forEach(function(e){if(e.date.slice(0,7)===ym)it.push({d:e.date,k:"h",h:hubChip(e,true)});});
     leavesIn(ym).forEach(function(l){it.push({d:l.from<ym+"-01"?ym+"-01":l.from,k:"l",h:'<button class="ev l" data-a="goto-leave" data-v="'+l.id+'" title="'+h(leaveName(l)+" · vacation "+leaveRange(l)+(l.note?" · "+l.note:""))+'">'+h(leaveName(l))+' · '+h(leaveRange(l))+'</button>'});});
     if(U.calTasks)S.tasks.forEach(function(t){if(t.visitFor)return;if(t.due&&t.due.slice(0,7)===ym&&isOpenTask(t))it.push({d:t.due,k:"t",h:'<button class="ev t" data-a="goto-task" data-v="'+t.id+'" title="'+h(t.id+" · "+t.title+(t.owner?" · "+pname(t.owner):""))+' — click to open">'+h(t.title)+'</button>'});});
     it.sort(function(a,b){return (a.d||"9")<(b.d||"9")?-1:(a.d||"9")>(b.d||"9")?1:0;});
@@ -1247,7 +1330,7 @@ function vCalYear(tm,actMonth,unsched){
   }).join("");
   var head='<div class="calhead">'+calViewSw()+'<h2>'+h(S.settings.term||"Chapter year")+'</h2><span style="flex:1"></span>'+
    '<label class="legend"><input type="checkbox" data-a="caltasks"'+(U.calTasks?" checked":"")+'> Show task deadlines</label>'+
-   '<span class="legend"><span><i style="background:var(--navy)"></i>Meeting</span><span><i style="background:var(--blue-soft);border:1px solid var(--navy)"></i>Site visit</span><span><i style="background:var(--green-soft);border:1px solid var(--green)"></i>Activity</span><span><i style="background:var(--amber-soft);border:1px solid var(--amber)"></i>Task due</span><span><i style="background:var(--surface-2);border:1px dashed var(--muted)"></i>Vacation</span><span><b class="mono">TBD</b> = month set, date to follow</span></span></div>';
+   '<span class="legend"><span><i style="background:var(--navy)"></i>Meeting</span><span><i style="background:var(--blue-soft);border:1px solid var(--navy)"></i>Site visit</span><span><i style="background:var(--green-soft);border:1px solid var(--green)"></i>Activity</span><span><i style="background:var(--amber-soft);border:1px solid var(--amber)"></i>Task due</span><span><i style="background:var(--surface-2);border:1px dashed var(--muted)"></i>Vacation</span><span><i style="background:var(--blue-soft);border:1px solid var(--blue-ink)"></i>Hub post</span><span><b class="mono">TBD</b> = month set, date to follow</span></span></div>';
   return '<div class="panel"><div class="ph"><h2>Calendar of activities</h2><span class="muted">Term '+h(S.settings.term)+'</span></div><div class="pb" style="display:flex;flex-direction:column;gap:14px">'+head+
    undatedMeetings()+'<div class="ycal">'+cards+'</div>'+leaveEditor()+
    '<h3 class="sec">Not yet scheduled ('+unsched.length+')</h3><p class="muted" style="margin:0;font-size:12.5px">Pick a month or date on a row to place it on the calendar.</p>'+actTable(unsched,"")+'</div></div>';
@@ -1276,7 +1359,7 @@ function actTable(list,ym){
      sel("act",a.id,"month",'<option value="">No month</option>'+tm.map(function(m){return opt(m,fmtMonth(m),a.date?a.date.slice(0,7):a.month);}).join("")+((a.month&&tm.indexOf(a.month)<0)?opt(a.month,fmtMonth(a.month),a.month):""),{r:1,aria:"Month"})+
      fld("act",a.id,"date",a.date,{type:"date",aria:"Exact date"})+
      sel("act",a.id,"owner",peopleOpts(a.owner),{cls:a.owner?"":"unset",aria:"Owner"})+
-     '<span style="display:flex;gap:4px;align-items:center">'+sel("act",a.id,"status",optsList(ACT_ST,a.status),{r:1,aria:"Status"})+delBtn("act:"+a.id)+'</span></div>';}).join("");
+     '<span style="display:flex;gap:4px;align-items:center">'+sel("act",a.id,"status",optsList(ACT_ST,a.status),{r:1,aria:"Status"})+delBtn("act:"+a.id)+'</span>'+hubCtl("act",a,true)+'</div>';}).join("");
   return '<div class="scroll"><div class="inner"><div class="arow h"><span>ID</span><span>Activity</span><span>Category</span><span>Project</span><span>Month</span><span>Exact date</span><span>Owner</span><span>Status</span></div>'+
    (rows||'<div class="muted" style="padding:10px 0">Nothing here yet.</div>')+'</div></div><div class="addrow"><button class="btn sm" data-a="add-act" data-v="'+ym+'">+ Activity'+(ym?" in "+fmtMonth(ym):" (unscheduled)")+'</button></div>';
 }
@@ -1505,6 +1588,7 @@ function docCalendar(){
     S.meetings.forEach(function(m){if(m.date&&m.date.slice(0,7)===ym)r.push([m.date,m.title,"Meeting · "+m.type,"",m.venue?m.venue:"",m.status]);});
     siteVisits().forEach(function(v){if(v.date.slice(0,7)===ym)r.push([v.date,v.title+(v.time?" ("+endTime(v.time,0)+")":""),"Site visit","",v.team,v.task?v.task.status:"Planned"]);});
     S.activities.forEach(function(a){var am=a.date?a.date.slice(0,7):a.month;if(am===ym)r.push([a.date||"",a.title,a.category||"Activity",a.projectId,pname(a.owner),a.status,a.date?"":ym]);});
+    HUBEV.forEach(function(e){if(e.date.slice(0,7)===ym)r.push([e.date,e.title,"Hub post · "+(HUBCAT[e.category]||e.category),"",e.venue,"Published"]);});
     leavesIn(ym).forEach(function(l){r.push([l.from<ym+"-01"?ym+"-01":l.from,leaveName(l)+" – on vacation ("+leaveRange(l)+")","Officer vacation","",l.note||"",""]);});
     return r.sort(function(x,y){return (x[0]||"9")<(y[0]||"9")?-1:1;});
   }
@@ -1603,6 +1687,7 @@ function onField(el){
   if(e==="task"&&f==="projectId"){/* keep agenda link */}
   o[f]=v;if(e==="vopt"){var vk2=String(id).split(":"),vm2=meeting(vk2[0]);if(vm2&&vm2.venueChosen===vk2[1]&&(f==="name"||f==="location"))vm2.venue=o.name+(o.location?", "+o.location:"");}
   markDirty();
+  if(MODE==="cloud"&&(e==="act"||e==="meeting")&&o.hub&&o.hub.on&&/^(title|date|time|callTime|venue|month)$/.test(f))hubQueue(e==="act"?"act":"mtg",id);
   if(el.dataset.r||(e==="settings"&&el.type!=="text")||(e==="meeting"&&(f==="title"||f==="date"||f==="venue"||f==="time"))||(e==="agenda"&&f==="mins")||f==="due"||f==="date"||(e==="leave"&&f!=="note"))render();
   else renderPreview();
 }
@@ -1628,6 +1713,9 @@ app.addEventListener("change",function(ev){
     if(ai.projectIds.indexOf(pv)<0)ai.projectIds.push(pv);
     markDirty();render();return;
   }
+  if(el.dataset.hub||el.dataset.hubcat){var hp=(el.dataset.hub||el.dataset.hubcat).split("|"),ho=hubObj(hp[0],hp[1]);
+    if(ho){ho.hub=ho.hub||{};if(el.dataset.hub){ho.hub.on=el.checked;if(!ho.hub.cat)ho.hub.cat=hubDefaultCat(hp[0],ho);}else ho.hub.cat=el.value;markDirty();render();hubQueue(hp[0],hp[1],300);}
+    return;}
   if(el.dataset.pmonth){var pmid=el.dataset.pmonth,pmp=proj(pmid),pma=projActs(pmid),pmv=el.value;
     if(!pma.length){if(pmv&&pmp)S.activities.push({id:nextId(S.activities,"E",3),title:pmp.name||pmid,category:"",projectId:pmid,date:"",month:pmv,owner:pmp.lead||"",status:"Proposed"});}
     else pma.forEach(function(x){x.month=pmv;if(x.date&&x.date.slice(0,7)!==pmv)x.date="";});
@@ -1673,6 +1761,7 @@ function newAgenda(m,title,extra){var a={id:nextId(m.agenda,m.id+"-A",2),title:t
 function newMeeting(type){type=type||"Officers' meeting";var m={id:nextId(S.meetings,"M",2),title:type==="Officers' meeting"?"Officers' Meeting":type,type:type,date:"",time:"",venue:"",status:"Planned",notes:"",agenda:[]};S.meetings.push(m);return m;}
 function del(key){
   var p=key.split(":"),k=p[0],id=p.slice(1).join(":");
+  if(MODE==="cloud"&&(k==="act"||k==="meeting")){var hk=k==="act"?"act":"mtg",hl=HUBLINK[hk+":"+id];if(hl&&hl.is_published)SB.from("announcements").update({is_published:false}).eq("id",hl.id).then(function(){hubLoad();});}
   if(k==="task")S.tasks=S.tasks.filter(function(t){return t.id!==id;});
   if(k==="allprojects"){S.projects=[];S.tasks.forEach(function(t){t.projectId="";});S.activities.forEach(function(a){a.projectId="";});S.meetings.forEach(function(m){m.agenda.forEach(function(a){a.projectIds=[];});});banner={kind:"info",text:"All projects were deleted. Tasks, agenda items and activities were kept."};}
   if(k==="vopt"){var vd=id.split(":"),vmm=meeting(vd[0]);if(vmm){vmm.venueOptions=vmm.venueOptions.filter(function(x){return x.id!==vd[1];});if(vmm.venueChosen===vd[1])vmm.venueChosen="";}}
