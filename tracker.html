@@ -413,6 +413,11 @@ select.st-Tentative{background:var(--amber-soft);color:var(--amber);font-weight:
 @container ed (max-width:900px){.ag-sched,.ag-sched-add{margin-left:12px;padding-left:10px}.ag-sched-add{margin-left:0}}
 .when-g.dt{grid-template-columns:170px 130px minmax(0,1fr)}
 .pm-cell{font-weight:600}
+.trow .f.remarks{grid-column:1/-1;font-size:12.5px;font-style:italic;color:var(--muted);background:transparent;border-style:dashed}
+.trow .f.remarks:not(:placeholder-shown){color:var(--ink);font-style:normal}
+table.t td .f.remarks{margin-top:3px;font-size:12px;font-style:italic;border-style:dashed}
+.rmk{font-size:.88em;font-style:italic;color:#555;margin-top:2px}
+.rmk::before{content:"Remarks: ";font-style:normal;font-weight:600}
 .ev.hb{background:var(--blue-soft);color:var(--blue-ink);border:1px solid var(--blue-ink);text-decoration:none;display:block}
 .ev.hb b{font-family:var(--mono);font-size:9.5px;letter-spacing:.5px}
 .hubdot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:4px;vertical-align:1px;box-shadow:0 0 0 1.5px var(--surface)}
@@ -1134,6 +1139,7 @@ function taskRow(t){
    assignBox(t)+
    fld("task",t.id,"due",t.due,{type:"date",aria:"Due date"})+
    chip(al[0],al[1])+delBtn("task:"+t.id)+
+   fld("task",t.id,"remarks",t.remarks||"",{cls:"remarks",ph:"Remarks (e.g. accepted on 27 Sep; confirmed by phone)",aria:"Remarks for "+t.id})+
 '</div>';
 }
 
@@ -1388,7 +1394,7 @@ function vTasksBody(f,list){
    '<select class="f" data-tflt="project"><option value="">Any project</option>'+opt("__none","No project",f.project)+S.projects.map(function(p){return opt(p.id,p.id+" · "+p.name,f.project);}).join("")+'</select>'+
    '<span style="flex:1"></span><button class="btn primary" data-a="add-task">+ Task</button></div>';
   var rows=list.map(function(t){var al=taskAlert(t);var a=t.agendaId?agendaItem(t.agendaId):null;
-    return '<tr data-task="'+t.id+'"><td><span class="idtag">'+t.id+'</span></td><td>'+fld("task",t.id,"title",t.title,{cls:"title",aria:"Task"})+'</td>'+
+    return '<tr data-task="'+t.id+'"><td><span class="idtag">'+t.id+'</span></td><td>'+fld("task",t.id,"title",t.title,{cls:"title",aria:"Task"})+fld("task",t.id,"remarks",t.remarks||"",{cls:"remarks",ph:"Remarks (e.g. accepted on 27 Sep; confirmed by phone)",aria:"Remarks for "+t.id})+'</td>'+
      '<td>'+sel("task",t.id,"projectId",projOpts(t.projectId),{aria:"Project"})+'</td>'+
      '<td>'+(t.agendaId?'<a class="idtag" style="cursor:pointer" data-a="goto-meeting" data-v="'+h(t.agendaId.split("-")[0])+'" title="'+h(a?a.title:"")+'">'+h(t.agendaId)+'</a>':'<span class="muted">—</span>')+'</td>'+
      '<td>'+assignBox(t)+'</td>'+
@@ -1474,7 +1480,7 @@ function docTaskTable(list,cols){
   if(!list.length)return '<div class="none">No tasks yet.</div>';
   cols=cols||{};
   return '<table><thead><tr><th style="width:52px">ID</th><th>Task</th>'+(cols.project?'<th style="width:62px">Project</th>':'')+(cols.agenda?'<th style="width:72px">Agenda</th>':'')+(cols.noOwner?'':'<th style="width:26%">Assigned to</th>')+'<th style="width:86px">Target date</th><th style="width:78px">Status</th></tr></thead><tbody>'+
-   list.map(function(t){return '<tr><td class="mono">'+t.id+'</td><td>'+(t.title?h(t.title):'<span class="tbd">Untitled task</span>')+'</td>'+(cols.project?'<td class="mono">'+h(t.projectId||"—")+'</td>':'')+(cols.agenda?'<td class="mono">'+h(t.agendaId||"—")+'</td>':'')+(cols.noOwner?'':'<td>'+whoHtml(t)+'</td>')+'<td>'+(t.due?h(fmtDate(t.due).slice(4)):'<span class="tbd">TBD</span>')+'</td><td>'+tStatus(t)+'</td></tr>';}).join("")+'</tbody></table>';
+   list.map(function(t){return '<tr><td class="mono">'+t.id+'</td><td>'+(t.title?h(t.title):'<span class="tbd">Untitled task</span>')+(t.remarks?'<div class="rmk">'+h(t.remarks)+'</div>':'')+'</td>'+(cols.project?'<td class="mono">'+h(t.projectId||"—")+'</td>':'')+(cols.agenda?'<td class="mono">'+h(t.agendaId||"—")+'</td>':'')+(cols.noOwner?'':'<td>'+whoHtml(t)+'</td>')+'<td>'+(t.due?h(fmtDate(t.due).slice(4)):'<span class="tbd">TBD</span>')+'</td><td>'+tStatus(t)+'</td></tr>';}).join("")+'</tbody></table>';
 }
 function effKind(m){return U.docKind==="agenda"||U.docKind==="minutes"?U.docKind:(m&&m.status==="Planned"?"agenda":"minutes");}
 function docMeeting(){
@@ -1502,7 +1508,7 @@ function itemMinutes(a,letter){
   if(st){if(a.schedPart!=="date")s+=venueMinutes(st);s+='<p class="res"><b>'+(a.schedPart==="venue"?"Venue":a.schedPart==="date"?"Date and time":"Schedule")+':</b> '+schedSentence(st,a.schedPart)+'</p>';}
   if(a.carried)s+='<p class="small"><i>Not concluded; carried forward to '+h(a.carriedTo)+' ('+h(meetingLabel(a.carriedTo))+').</i></p>';
   if(tks.length)s+='<table><thead><tr><th>To-dos</th><th style="width:30%">Assigned to</th><th style="width:15%">Target date</th><th style="width:11%">Status</th></tr></thead><tbody>'+
-    tks.map(function(t){return '<tr><td>'+(t.title?h(t.title):'<span class="tbd">Untitled</span>')+'</td><td>'+whoHtml(t)+'</td><td>'+(t.due?h(fmtDate(t.due).slice(4)):'<span class="tbd">TBD</span>')+'</td><td>'+h(t.status)+'</td></tr>';}).join("")+'</tbody></table>';
+    tks.map(function(t){return '<tr><td>'+(t.title?h(t.title):'<span class="tbd">Untitled</span>')+(t.remarks?'<div class="rmk">'+h(t.remarks)+'</div>':'')+'</td><td>'+whoHtml(t)+'</td><td>'+(t.due?h(fmtDate(t.due).slice(4)):'<span class="tbd">TBD</span>')+'</td><td>'+h(t.status)+'</td></tr>';}).join("")+'</tbody></table>';
   return s+'</div></div>';
 }
 function letterOf(i){return String.fromCharCode(65+(i%26))+(i>=26?String(Math.floor(i/26)+1):"");}
