@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Chapter Calendar · PICPA Jeddah</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cpolygon fill='%2343A705' points='43.5,66.4 1.6,133.9 43.5,200 77.5,200 36.6,132 77.8,66.4'/%3E%3Cpolygon fill='%230B5A0C' points='83.1,66.4 41.4,133.9 83.1,200 117.1,200 76.1,134.3 117.1,66.4'/%3E%3Cpolygon fill='%230A1560' points='83.4,0.5 124.1,67.3 83.1,133.4 116.9,133.4 158.8,65.7 117.3,0.2'/%3E%3Cpolygon fill='%230B36C6' points='156.5,0 122.9,0.2 163.7,67.5 122.7,133.2 156.2,133.2 198.4,67.1'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap">
+<style>
+:root{
+  --paper:#F5F7FC; --sheet:#FFFFFF; --ink:#101E5A; --ink-2:#4A5680; --rule:#D5DCEB; --rule-2:#E7ECF5;
+  --action:#2149D6; --go:#3FA62B; --go-ink:#1E6B22;
+  --q1:#43A705; --q2:#0B5A0C; --q3:#0A1560; --q4:#0B36C6;
+  --band:#101E5A; --band-ink:#FFFFFF; --band-2:#B9C4EC;
+  --focus:#2149D6;
+  --w-wide:"wdth" 125; --w-narrow:"wdth" 62;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0A1236; --sheet:#0F1A48; --ink:#E8EDFB; --ink-2:#A9B4DA; --rule:#27336A; --rule-2:#1C2758;
+    --action:#8FA8FF; --go:#6BCB4F; --go-ink:#8FDC74;
+    --q1:#6BCB4F; --q2:#3E9A3A; --q3:#7C8BE0; --q4:#5B82FF;
+    --band:#1D2E86; --band-ink:#FFFFFF; --band-2:#C3CCF2; --focus:#8FA8FF; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0A1236; --sheet:#0F1A48; --ink:#E8EDFB; --ink-2:#A9B4DA; --rule:#27336A; --rule-2:#1C2758;
+  --action:#8FA8FF; --go:#6BCB4F; --go-ink:#8FDC74;
+  --q1:#6BCB4F; --q2:#3E9A3A; --q3:#7C8BE0; --q4:#5B82FF;
+  --band:#1D2E86; --band-ink:#FFFFFF; --band-2:#C3CCF2; --focus:#8FA8FF; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 16px/1.55 "Archivo",system-ui,sans-serif;font-variation-settings:"wdth" 100}
+a{color:var(--action)}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:4px}
+.wrap{max-width:1040px;margin:0 auto;padding:0 16px}
+
+/* masthead */
+.mast{padding:18px 0 8px}
+.mast .wrap{display:flex;align-items:center;gap:12px}
+.mark{width:40px;height:40px;flex:none;background:#fff;border-radius:10px;padding:5px}
+.org{line-height:1.2}
+.org b{display:block;font-weight:700;font-size:15px}
+.org span{font-size:13px;color:var(--ink-2)}
+.mast .back{margin-left:auto;font-size:14px;font-weight:600;text-decoration:none;padding:8px 12px;border:1.5px solid var(--rule);border-radius:999px;color:var(--ink)}
+.mast .back:hover{border-color:var(--ink)}
+
+h1{font-variation-settings:var(--w-wide);font-weight:850;font-size:clamp(34px,7vw,64px);line-height:1;letter-spacing:-.01em;margin:22px 0 6px}
+.lede{margin:0 0 22px;color:var(--ink-2);max-width:60ch}
+
+/* the fiscal ledger */
+.ledger{background:var(--sheet);border:1px solid var(--rule);border-radius:14px;padding:14px 14px 10px;position:relative}
+.ledger-cap{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:0 2px 10px;font-size:14px;color:var(--ink-2)}
+.ledger-cap b{color:var(--ink);font-weight:700;white-space:nowrap}
+.quarters{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:6px}
+.quarters span{height:6px;border-radius:3px}
+.quarters span:nth-child(1){background:var(--q1)}.quarters span:nth-child(2){background:var(--q2)}
+.quarters span:nth-child(3){background:var(--q3)}.quarters span:nth-child(4){background:var(--q4)}
+.periods{display:grid;grid-template-columns:repeat(12,1fr);position:relative}
+.period{appearance:none;background:none;border:0;border-left:1px solid var(--rule-2);color:var(--ink);font:inherit;cursor:pointer;padding:8px 2px 8px;display:flex;flex-direction:column;align-items:center;gap:8px;min-height:112px}
+.period:first-child{border-left:0}
+.period:hover{background:var(--rule-2)}
+.period .mo{font-variation-settings:var(--w-narrow);font-weight:700;font-size:15px}
+.period .tally{display:flex;flex-direction:column-reverse;gap:4px;align-items:center;flex:1;justify-content:flex-start;width:100%}
+.period .tally i{width:min(70%,34px);height:10px;border-radius:3px;background:var(--q)}
+.period .n{font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.period.past .mo,.period.past .n{color:var(--ink-2)}
+.period.past .tally i{opacity:.35}
+.today{position:absolute;top:-4px;bottom:0;width:0;border-left:2px solid var(--go);pointer-events:none}
+.today::after{content:"Today";position:absolute;top:-22px;left:-18px;font-size:12px;font-weight:700;color:var(--go-ink);white-space:nowrap}
+@media (prefers-reduced-motion:no-preference){.today{animation:draw .9s cubic-bezier(.16,1,.3,1) .25s both}@keyframes draw{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0 0 0 0)}}}
+
+/* next up band */
+.next{background:var(--band);color:var(--band-ink);margin:28px 0 8px}
+.next .wrap{display:grid;grid-template-columns:auto 1fr;gap:6px 26px;align-items:center;padding-top:26px;padding-bottom:26px}
+.next .when{text-align:center;line-height:.9}
+.next .dow{display:block;font-size:15px;font-weight:600;color:var(--band-2)}
+.next .day{display:block;font-variation-settings:var(--w-narrow);font-weight:800;font-size:clamp(76px,16vw,128px);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.next .mon{display:block;font-variation-settings:var(--w-wide);font-weight:700;font-size:17px}
+.next .label{margin:0;color:var(--band-2);font-size:15px}
+.next h2{margin:2px 0 6px;font-variation-settings:"wdth" 110;font-weight:800;font-size:clamp(22px,3.6vw,34px);line-height:1.15;max-width:32ch}
+.next p.meta{margin:0 0 14px;color:var(--band-2)}
+.next p.meta b{color:var(--band-ink);font-weight:600}
+.next .cta{grid-column:2}
+.none-next{padding:18px 0}
+
+/* buttons + add-to-calendar menu */
+.btn{appearance:none;font:inherit;font-weight:700;font-size:15px;border-radius:999px;padding:10px 18px;border:0;cursor:pointer;background:var(--go);color:#fff;display:inline-flex;align-items:center;gap:8px}
+.btn:hover{filter:brightness(1.06)}
+.btn.quiet{background:transparent;color:var(--action);border:1.5px solid var(--rule);padding:7px 12px;font-size:14px}
+.btn.quiet:hover{border-color:var(--action)}
+.addwrap{position:relative;display:inline-block}
+.menu{position:absolute;z-index:5;top:calc(100% + 6px);left:0;min-width:220px;background:var(--sheet);color:var(--ink);border:1px solid var(--rule);border-radius:12px;padding:6px;box-shadow:0 12px 32px -12px rgba(16,30,90,.45)}
+.menu[hidden]{display:none}
+.menu a,.menu button{display:block;width:100%;text-align:left;padding:9px 10px;border-radius:8px;color:var(--ink);text-decoration:none;background:none;border:0;font:inherit;font-size:15px;cursor:pointer}
+.menu a:hover,.menu button:hover{background:var(--rule-2)}
+@media (prefers-reduced-motion:no-preference){.menu:not([hidden]){animation:pop .16s ease-out}@keyframes pop{from{opacity:0;transform:translateY(-4px)}}}
+
+/* programme */
+.programme{padding-top:18px;padding-bottom:40px}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:flex-end;margin:18px 0 6px}
+.tools p{margin:0;color:var(--ink-2);font-size:15px}
+.month{scroll-margin-top:16px;margin-top:26px}
+.month h3{display:flex;align-items:center;gap:12px;margin:0 0 4px;font-variation-settings:var(--w-wide);font-weight:800;font-size:22px}
+.month h3 .q{width:10px;height:22px;border-radius:3px;background:var(--q)}
+.month h3 small{font-variation-settings:"wdth" 100;font-weight:500;font-size:14px;color:var(--ink-2)}
+.row{display:grid;grid-template-columns:64px 1fr auto;gap:14px;align-items:start;padding:14px 0;border-top:1px solid var(--rule)}
+.row:last-child{border-bottom:1px solid var(--rule)}
+.row .d{text-align:center;line-height:1}
+.row .d b{display:block;font-variation-settings:var(--w-narrow);font-weight:800;font-size:40px;font-variant-numeric:tabular-nums}
+.row .d span{font-size:13px;color:var(--ink-2)}
+.row h4{margin:2px 0 3px;font-size:18px;font-weight:700;line-height:1.3;max-width:52ch}
+.row .kind{font-size:14px;font-weight:600;color:var(--q-ink,var(--ink-2))}
+.row .info{margin:2px 0 0;color:var(--ink-2);font-size:15px}
+.row.past{opacity:.6}
+.row.soon h4::after{content:"This week";margin-left:8px;font-size:12px;font-weight:700;color:var(--go-ink);border:1.5px solid var(--go);border-radius:999px;padding:1px 7px;vertical-align:3px}
+.empty{padding:28px 0;color:var(--ink-2)}
+details.earlier{margin-top:22px}
+details.earlier summary{cursor:pointer;font-weight:700;color:var(--action);padding:8px 0}
+
+/* gate */
+.gate{max-width:440px;margin:12vh auto;padding:0 16px;text-align:center}
+.gate h1{font-size:34px}
+.gate p{color:var(--ink-2)}
+
+footer{padding:26px 0 40px;color:var(--ink-2);font-size:14px;border-top:1px solid var(--rule)}
+
+@media (max-width:640px){
+  .period{min-height:70px;padding:4px 0 6px}
+  .period .mo{font-size:12px}
+  .period .tally i{height:8px}
+  .next .wrap{grid-template-columns:1fr;text-align:left}
+  .next .when{text-align:left;display:flex;align-items:baseline;gap:10px}
+  .next .day{font-size:84px}
+  .next .cta{grid-column:1}
+  .row{grid-template-columns:52px 1fr}
+  .row .add{grid-column:2}
+  .row .d b{font-size:34px}
+  .mast .back{padding:7px 12px;font-size:13px}
+  .mast .back .long{display:none}
+  .org span{font-size:12px}
+  .tools{justify-content:flex-start}
+}
+</style>
+</head>
+<body>
+<div id="app" aria-live="polite"><div class="gate"><h1>Chapter calendar</h1><p>Loading…</p></div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok" crossorigin="anonymous"></script>
+<script>
+(function(){
+var URL_="https://cpumktocfhbnzocyztlb.supabase.co", KEY="sb_publishable_un5TqUZ6gEcFtulfGlh-Jg_D8Q6jWrC", HUB="./";
+var TZ="Asia/Riyadh";
+var KIND={cpd_program:"CPD program",seminar_training:"Seminar or training",general_meeting:"General meeting",social_event:"Social event",announcement:"Chapter event",news:"News",project:"Chapter project"};
+var MARK='<svg class="mark" viewBox="0 0 200 200" aria-hidden="true"><polygon fill="#43A705" points="43.5,66.4 1.6,133.9 43.5,200 77.5,200 36.6,132 77.8,66.4"/><polygon fill="#0B5A0C" points="83.1,66.4 41.4,133.9 83.1,200 117.1,200 76.1,134.3 117.1,66.4"/><polygon fill="#0A1560" points="83.4,0.5 124.1,67.3 83.1,133.4 116.9,133.4 158.8,65.7 117.3,0.2"/><polygon fill="#0B36C6" points="156.5,0 122.9,0.2 163.7,67.5 122.7,133.2 156.2,133.2 198.4,67.1"/></svg>';
+var app=document.getElementById("app");
+function h(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+function parts(iso){ // date parts in Jeddah time
+  var f=new Intl.DateTimeFormat("en-GB",{timeZone:TZ,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false,weekday:"short"}).formatToParts(new Date(iso)),o={};
+  f.forEach(function(p){o[p.type]=p.value;});
+  return {y:+o.year,m:+o.month,d:+o.day,hh:o.hour==="24"?"00":o.hour,mi:o.minute,dow:o.weekday,ym:o.year+"-"+o.month,ymd:o.year+"-"+o.month+"-"+o.day};}
+var MON=["January","February","March","April","May","June","July","August","September","October","November","December"];
+function timeText(p){if(p.hh==="00"&&p.mi==="00")return "";var H=+p.hh,ap=H>=12?"PM":"AM";H=H%12||12;return H+":"+p.mi+" "+ap;}
+function fyOf(p){return p.m>=10?p.y:p.y-1;}
+function fyMonths(fy){var out=[];for(var i=0;i<12;i++){var m=(9+i)%12+1,y=m>=10?fy:fy+1;out.push({y:y,m:m,ym:y+"-"+(m<10?"0":"")+m,q:Math.floor(i/3)+1});}return out;}
+function days(a,b){return Math.round((Date.parse(b+"T00:00:00Z")-Date.parse(a+"T00:00:00Z"))/864e5);}
+function gate(html){app.innerHTML='<div class="gate">'+MARK.replace('class="mark"','class="mark" style="width:64px;height:64px"')+'<h1>Chapter calendar</h1>'+html+'</div>';}
+
+/* add to calendar */
+function stamp(d){return d.toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"");}
+function gcal(e){var s=new Date(e.event_date),en=new Date(s.getTime()+2*3600e3);
+  return "https://calendar.google.com/calendar/render?action=TEMPLATE&text="+encodeURIComponent(e.title)+"&dates="+stamp(s)+"/"+stamp(en)+"&details="+encodeURIComponent("PICPA Western Region, Jeddah Chapter. Details on the Hub.")+(e.venue?"&location="+encodeURIComponent(e.venue):"");}
+function icsEvent(e){var s=new Date(e.event_date),en=new Date(s.getTime()+2*3600e3);function esc(t){return String(t||"").replace(/([,;\\])/g,"\\$1").replace(/\n/g,"\\n");}
+  return ["BEGIN:VEVENT","UID:"+e.id+"@picpa-jeddah-hub","DTSTAMP:"+stamp(new Date()),"DTSTART:"+stamp(s),"DTEND:"+stamp(en),"SUMMARY:"+esc(e.title),e.venue?"LOCATION:"+esc(e.venue):"","DESCRIPTION:"+esc("PICPA Western Region, Jeddah Chapter"),"END:VEVENT"].filter(Boolean).join("\r\n");}
+function download(name,list){var body=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//PICPA Jeddah Chapter//Calendar//EN","CALSCALE:GREGORIAN","X-WR-CALNAME:PICPA Jeddah Chapter"].concat(list.map(icsEvent)).concat(["END:VCALENDAR"]).join("\r\n");
+  var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([body],{type:"text/calendar"}));a.download=name;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},500);}
+function addBtn(e,big){var id="m"+String(e.id).replace(/[^a-z0-9]/gi,"");
+  return '<span class="addwrap"><button class="btn'+(big?'':' quiet')+'" aria-haspopup="true" aria-expanded="false" aria-controls="'+id+'" data-menu="'+id+'">Add to my calendar</button>'+
+   '<span class="menu" id="'+id+'" hidden><a href="'+h(gcal(e))+'" target="_blank" rel="noopener">Google Calendar</a><button data-ics="'+h(e.id)+'">Apple or Outlook (.ics file)</button></span></span>';}
+
+var EV=[];
+function render(){
+  var now=new Date(),tp=parts(now.toISOString()),today=tp.ymd;
+  var upcoming=EV.filter(function(e){return e.p.ymd>=today;});
+  var next=upcoming[0];
+  // show the fiscal year the chapter is heading into (a late-September visit shows the new FY)
+  var fy=next?Math.min(fyOf(next.p),fyOf(tp)+1):fyOf(tp),months=fyMonths(fy);
+  var inFy=EV.filter(function(e){return fyOf(e.p)===fy;});
+  var before=today<months[0].ym+"-01";
+  var s='<header class="mast"><div class="wrap">'+MARK+'<div class="org"><b>PICPA Western Region</b><span>Jeddah Chapter, Kingdom of Saudi Arabia</span></div><a class="back" href="'+HUB+'" aria-label="Back to the Hub"><span class="long">Back to the </span>Hub</a></div></header>';
+  s+='<main><div class="wrap"><h1>Chapter calendar</h1><p class="lede">Every programme and gathering for fiscal year '+fy+'–'+(fy+1)+', October to September. Tap a month to jump to it.</p>';
+  // ledger
+  var qcol=["","--q1","--q2","--q3","--q4"];
+  s+='<section class="ledger" aria-label="Fiscal year at a glance"><div class="ledger-cap"><span><b>FY '+fy+'–'+(fy+1)+'</b></span><span>'+(before?'Starts 1 October '+fy+', ':'')+inFy.length+' event'+(inFy.length===1?'':'s')+' planned</span></div>';
+  s+='<div class="quarters" aria-hidden="true"><span title="Q1"></span><span title="Q2"></span><span title="Q3"></span><span title="Q4"></span></div><div class="periods">';
+  months.forEach(function(mo){var n=inFy.filter(function(e){return e.p.ym===mo.ym;}).length;var past=mo.ym<tp.ym;
+    s+='<button class="period'+(past?' past':'')+'" style="--q:var('+qcol[mo.q]+')" data-jump="'+mo.ym+'" aria-label="'+MON[mo.m-1]+' '+mo.y+', '+n+' event'+(n===1?'':'s')+'"><span class="mo">'+MON[mo.m-1].slice(0,3)+'</span><span class="tally">'+new Array(n+1).join("<i></i>")+'</span><span class="n">'+(n||"")+'</span></button>';});
+  var idx=months.map(function(m){return m.ym;}).indexOf(tp.ym);
+  if(idx>=0){var dim=new Date(tp.y,tp.m,0).getDate(),pos=(idx+(tp.d-.5)/dim)/12*100;s+='<span class="today" style="left:'+pos.toFixed(2)+'%" aria-hidden="true"></span>';}
+  s+='</div></section></div>';
+  // next up
+  if(next){var p=next.p,dd=days(today,p.ymd),t=timeText(p);
+    s+='<section class="next" aria-labelledby="nexth"><div class="wrap"><div class="when"><span class="dow">'+h(p.dow)+'</span><span class="day">'+p.d+'</span><span class="mon">'+MON[p.m-1].slice(0,3)+' '+p.y+'</span></div>'+
+      '<div><p class="label">'+(dd===0?"Next up, today":dd===1?"Next up, tomorrow":"Next up, in "+dd+" days")+'</p><h2 id="nexth">'+h(next.title)+'</h2>'+
+      '<p class="meta">'+[t?'<b>'+t+'</b>':'',next.venue?h(next.venue):'Venue to be announced',h(KIND[next.category]||"Chapter event")].filter(Boolean).join(", ")+'</p></div>'+
+      '<div class="cta">'+addBtn(next,true)+'</div></div></section>';}
+  else s+='<div class="wrap none-next"><p class="lede">Nothing is scheduled yet. New programmes appear here as soon as officers publish them.</p></div>';
+  // programme by month
+  s+='<div class="wrap programme"><div class="tools">'+(upcoming.length?'<button class="btn quiet" data-all="1">Add all upcoming to my calendar (.ics)</button>':'')+'</div>';
+  function rowsFor(list){return list.map(function(e){var p=e.p,t=timeText(p),soon=p.ymd>=today&&days(today,p.ymd)<=7;
+    return '<article class="row'+(p.ymd<today?' past':'')+(soon?' soon':'')+'"><div class="d"><b>'+p.d+'</b><span>'+h(p.dow)+'</span></div><div><div class="kind">'+h(KIND[e.category]||"Chapter event")+'</div><h4>'+h(e.title)+'</h4><p class="info">'+[t,e.venue?h(e.venue):'Venue to be announced'].filter(Boolean).join(", ")+'</p></div>'+(p.ymd>=today?'<div class="add">'+addBtn(e,false)+'</div>':'<div></div>')+'</article>';}).join("");}
+  var shown=0;
+  months.forEach(function(mo){var list=inFy.filter(function(e){return e.p.ym===mo.ym&&e.p.ymd>=today;});if(!list.length)return;shown++;
+    s+='<section class="month" id="m-'+mo.ym+'" style="--q:var('+qcol[mo.q]+')"><h3><span class="q" aria-hidden="true"></span>'+MON[mo.m-1]+' '+mo.y+'<small>Q'+mo.q+'</small></h3>'+rowsFor(list)+'</section>';});
+  var later=EV.filter(function(e){return fyOf(e.p)>fy;});
+  if(later.length){s+='<section class="month"><h3>Next fiscal year</h3>'+rowsFor(later)+'</section>';}
+  if(!shown&&!later.length)s+='<p class="empty">No upcoming programmes yet this fiscal year.</p>';
+  var past=EV.filter(function(e){return e.p.ymd<today;}).reverse();
+  if(past.length){s+='<details class="earlier"><summary>Past events ('+past.length+')</summary>';
+    var seen={};past.forEach(function(e){if(seen[e.p.ym])return;seen[e.p.ym]=1;var list=past.filter(function(x){return x.p.ym===e.p.ym;});
+      s+='<section class="month" id="p-'+e.p.ym+'"><h3>'+MON[e.p.m-1]+' '+e.p.y+'</h3>'+rowsFor(list)+'</section>';});
+    s+='</details>';}
+  s+='</div></main><footer><div class="wrap">Programmes are published by chapter officers on the Hub. Times are Jeddah time.</div></footer>';
+  app.innerHTML=s;
+}
+document.addEventListener("click",function(ev){
+  var b=ev.target.closest("[data-menu],[data-ics],[data-all],[data-jump]");
+  document.querySelectorAll(".menu:not([hidden])").forEach(function(m){if(!b||b.dataset.menu!==m.id){m.hidden=true;var t=document.querySelector('[data-menu="'+m.id+'"]');if(t)t.setAttribute("aria-expanded","false");}});
+  if(!b)return;
+  if(b.dataset.menu){var m=document.getElementById(b.dataset.menu);m.hidden=!m.hidden;b.setAttribute("aria-expanded",String(!m.hidden));if(!m.hidden){var f=m.querySelector("a,button");if(f)f.focus();}return;}
+  if(b.dataset.ics){var e=EV.filter(function(x){return String(x.id)===b.dataset.ics;})[0];if(e)download(e.title.replace(/[^\w\- ]+/g,"").slice(0,40)+".ics",[e]);return;}
+  if(b.dataset.all){var t=parts(new Date().toISOString()).ymd;download("PICPA-Jeddah-chapter-calendar.ics",EV.filter(function(x){return x.p.ymd>=t;}));return;}
+  if(b.dataset.jump){var s=document.getElementById("m-"+b.dataset.jump)||document.getElementById("p-"+b.dataset.jump);if(s){var d=s.closest("details");if(d)d.open=true;s.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});}}
+});
+document.addEventListener("keydown",function(ev){if(ev.key==="Escape")document.querySelectorAll(".menu:not([hidden])").forEach(function(m){m.hidden=true;var t=document.querySelector('[data-menu="'+m.id+'"]');if(t){t.setAttribute("aria-expanded","false");t.focus();}});});
+
+if(!window.supabase||!window.supabase.createClient){gate('<p>The calendar could not load. Check your connection, then reload the page.</p>');return;}
+var SB=window.supabase.createClient(URL_,KEY);
+SB.auth.getSession().then(function(r){
+  var ses=r&&r.data&&r.data.session;
+  if(!ses){gate('<p>The chapter calendar is for members. Sign in to the Hub, then open this page again.</p><p><a class="btn" href="'+HUB+'">Sign in on the Hub</a></p>');return;}
+  SB.from("announcements").select("id,title,category,event_date,venue,is_published").not("event_date","is",null).then(function(q){
+    if(q.error){gate('<p>The calendar could not load: '+h(q.error.message)+'. Reload the page to try again.</p>');return;}
+    EV=(q.data||[]).filter(function(e){return e.is_published!==false;}).map(function(e){e.p=parts(e.event_date);return e;}).sort(function(a,b){return a.event_date<b.event_date?-1:1;});
+    render();
+  });
+},function(){gate('<p>Sign-in check failed. Reload the page to try again.</p>');});
+})();
+</script>
+</body>
+</html>
