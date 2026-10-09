@@ -76,6 +76,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .btn.sm{padding:3px 9px;font-size:12.5px}
 .bar .btn{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25);color:var(--head-ink)}
 .bar .btn.primary{background:var(--green);color:#0E2206;border-color:var(--green)}
+.bar a.btn{text-decoration:none;font:inherit;font-size:12.5px;font-weight:500}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 .f{border:1px solid transparent;background:transparent;border-radius:6px;padding:4px 6px;min-width:0;width:100%}
 .f:hover{border-color:var(--line)}
@@ -593,7 +594,7 @@ var SCRIPT=document.getElementById("app-script").textContent;
 var EMBED=JSON.parse(document.getElementById("data").textContent);
 var S=clone(EMBED);
 var MODE="local";          // "local" | "artifact" | "readonly" | "cloud"
-var SB=null,CV=0,CSAVE=null,CPEND=false,CUSER="",CINFO={};
+var SB=null,CV=0,CSAVE=null,CPEND=false,CUSER="",CINFO={},LROLE=null;
 var HUBEV=[],HUBLINK={},HUBST={},HUBQ={},HUBDEFER=false;
 var ART=null, DL=null, dirty=false, busy=false, banner=null;
 var U={tab:"meetings",meeting:"M01",open:{},calMonth:"",calView:"year",calTasks:true,pView:"list",pf:{q:"",status:"",pillar:"",lead:"",category:"",decision:"",kind:""},tf:{owner:"",status:"open",project:""},confirm:"",closing:""};
@@ -762,12 +763,24 @@ function cloudBoot(){
     SB.from("profiles").select("is_admin").eq("id",ses.user.id).maybeSingle().then(function(p){
       if(p.error){gate('<p>Could not check your access: '+h(p.error.message)+'</p>');return;}
       if(!p.data||!p.data.is_admin){gate('<p>The chapter tracker is for Hub admins only. You are signed in as <b>'+h(CUSER)+'</b>.</p>'+hubLink("Back to the Hub"));return;}
-      cloudLoad(true);
+      cloudLoad(true);ledgerRole();
     });
   },function(){gate('<p>Sign-in check failed. Reload the page to try again.</p>');});
   setInterval(cloudPoll,30000);
   window.addEventListener("focus",cloudPoll);
   window.addEventListener("beforeunload",function(e){if(MODE==="cloud"&&(dirty||busy)){e.preventDefault();e.returnValue="";}});
+}
+// Ledger link: shown only when the database says this user has a Ledger role (RPC may not exist yet; any failure = no link)
+var LEDGER_LINK='<a id="barledger" class="btn sm" href="./ledger.html" aria-label="Open the Ledger">Ledger</a>';
+function ledgerRole(){
+  try{Promise.resolve(SB.rpc("ledger_my_role")).then(function(r){
+    if(!r||r.error||typeof r.data!=="string"||!r.data)return;
+    LROLE=r.data;   // later bar() renders include the link
+    // The bar may already be on screen: add the link in place (never a full render(), which would wipe a focused
+    // input or text being typed), just before #barstate inside .savebox, once.
+    var st=document.getElementById("barstate");
+    if(st&&!document.getElementById("barledger"))st.insertAdjacentHTML("beforebegin",LEDGER_LINK);
+  }).catch(function(){});}catch(e){}
 }
 function cloudLoad(first,note){
   return SB.from("tracker_state").select("data,version,updated_at,updated_by").eq("id","main").maybeSingle().then(function(r){
@@ -852,7 +865,7 @@ function bar(){
   var n={meetings:S.meetings.length,projects:S.projects.length,calendar:S.activities.length,tasks:S.tasks.filter(isOpenTask).length,people:S.people.length};
   var tabs=[["meetings","Meetings"],["projects","Projects"],["calendar","Calendar"],["tasks","Tasks"],["people","People"],["data","Settings & data"]];
   return '<header class="bar"><div class="bar-in"><div class="brand-row" style="margin-right:auto">'+((S.settings.logo||APP_LOGO)?'<img src="'+h(S.settings.logo||APP_LOGO)+'" alt="">':'')+'<div class="brand"><b>'+h(S.settings.org)+' · Chapter Tracker</b><span>'+h(S.settings.term)+' · <i>'+h(S.settings.theme)+'</i>'+(S.settings.tagline?' · '+h(S.settings.tagline):'')+'</span></div></div>'+
-  '<div class="savebox"><span id="barstate" class="state"></span><button id="barsave" class="btn primary sm" data-a="save" hidden>Save for everyone</button><button id="bardl" class="btn sm" data-a="dlhtml" hidden>Download updated file</button></div></div>'+
+  '<div class="savebox">'+(LROLE?LEDGER_LINK:'')+'<span id="barstate" class="state"></span><button id="barsave" class="btn primary sm" data-a="save" hidden>Save for everyone</button><button id="bardl" class="btn sm" data-a="dlhtml" hidden>Download updated file</button></div></div>'+
   '<nav class="tabs" role="tablist">'+tabs.map(function(t){return '<button role="tab" aria-selected="'+(U.tab===t[0])+'" data-a="tab" data-v="'+t[0]+'">'+t[1]+(n[t[0]]!=null?'<span class="n">'+n[t[0]]+'</span>':"")+'</button>';}).join("")+'</nav></header>';
 }
 
