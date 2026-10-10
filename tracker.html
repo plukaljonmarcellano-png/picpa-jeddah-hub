@@ -431,6 +431,11 @@ table.t td .f.remarks{margin-top:3px;font-size:12px;font-style:italic;border-sty
 .hubtime input{width:auto;font-size:12px;padding:3px 6px}
 .hubst .good{color:var(--green-ink);font-weight:600}
 .hubst .bad{color:var(--amber);font-weight:600}
+.hubctl.tkctl{align-items:flex-end;gap:10px}
+.tkf{display:inline-flex;flex-direction:column;gap:2px;color:var(--muted);font-size:11.5px}
+.tkf input.f{width:110px;font-size:12px;padding:3px 6px}
+.tkf input.f.tkwide{width:200px}
+.tkf input.f[type=datetime-local]{width:auto}
 .gate{min-height:100vh;display:grid;place-items:center;padding:24px 16px;background:var(--bg)}
 .gate-card{max-width:420px;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:28px 24px;text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center}
 .gate-card img{width:56px;height:auto}
@@ -596,6 +601,7 @@ var S=clone(EMBED);
 var MODE="local";          // "local" | "artifact" | "readonly" | "cloud"
 var SB=null,CV=0,CSAVE=null,CPEND=false,CUSER="",CINFO={},LROLE=null;
 var HUBEV=[],HUBLINK={},HUBST={},HUBQ={},HUBDEFER=false;
+var TKST={},TKFLY={},TKAGAIN={},TKC={};   // event tickets: status per 'act:ID', in-flight syncs, queued re-sync, in-flight cancel flows
 var ART=null, DL=null, dirty=false, busy=false, banner=null;
 var U={tab:"meetings",meeting:"M01",open:{},calMonth:"",calView:"year",calTasks:true,pView:"list",pf:{q:"",status:"",pillar:"",lead:"",category:"",decision:"",kind:""},tf:{owner:"",status:"open",project:""},confirm:"",closing:""};
 var app=document.getElementById("app");
@@ -705,8 +711,9 @@ function hubCtl(kind,o,compact){
   var sw='<label class="hubsw" title="Show this on the Hub\'s Programs & Events for members"><input type="checkbox" data-hub="'+kind+'|'+h(o.id)+'"'+(on?" checked":"")+'> '+(compact?'Hub':'Post on the Hub (Programs &amp; Events)')+'</label>';
   var cs=on?'<select class="f hubcat" data-hubcat="'+kind+'|'+h(o.id)+'" aria-label="Hub category">'+Object.keys(HUBCAT).map(function(k){return opt(k,HUBCAT[k],cat);}).join("")+'</select>':'';
   var tm=on&&kind==="act"?'<label class="hubtime">Start time'+fld("act",o.id,"time",o.time||"",{type:"time",aria:"Start time for the Hub post"})+'</label>':'';
-  return '<div class="hubctl'+(compact?" sm":"")+'">'+sw+cs+tm+st+'</div>';}
-function hubStText(ref,o,kind){
+  return '<div class="hubctl'+(compact?" sm":"")+'">'+sw+cs+tm+st+'</div>'+(kind==="act"?tkCtl(o):"");}
+function hubStText(ref,o,kind){return hubStText0(ref,o,kind)+(kind==="act"?tkStText(ref,o):"");}
+function hubStText0(ref,o,kind){
   var s=HUBST[ref],on=!!(o.hub&&o.hub.on);
   if(s==="busy")return "Updating the Hub…";
   if(s&&s.indexOf("err:")===0)return '<span class="bad">Hub: '+h(s.slice(4))+'</span>';
@@ -733,7 +740,7 @@ function hubStPaint(ref,kind){var el=document.getElementById("hubst-"+ref.replac
 function hubPush(kind,id){
   var o=hubObj(kind,id),ref=kind+":"+id;if(!SB||MODE!=="cloud")return;
   var linked=HUBLINK[ref],on=!!(o&&o.hub&&o.hub.on);
-  function fin(r){if(r&&r.error)HUBST[ref]="err:"+(r.error.message||"could not save");else delete HUBST[ref];hubLoad().then(function(){hubStPaint(ref,kind);});hubStPaint(ref,kind);}
+  function fin(r){if(r&&r.error)HUBST[ref]="err:"+(r.error.message||"could not save");else delete HUBST[ref];hubLoad().then(function(){hubStPaint(ref,kind);});hubStPaint(ref,kind);if(!(r&&r.error)&&kind==="act")tkSync(id);}
   function upd(rid,patch){HUBST[ref]="busy";hubStPaint(ref,kind);return SB.from("announcements").update(patch).eq("id",rid).select("id").then(fin,function(){fin({error:{message:"network error"}});});}
   if(!o||!on){if(linked&&linked.is_published)upd(linked.id,{is_published:false});return;}
   var w=hubWhen(kind,o);
@@ -750,6 +757,161 @@ function hubPush(kind,id){
   HUBST[ref]="busy";hubStPaint(ref,kind);
   SB.from("announcements").insert(row).select("id").then(fin,function(){fin({error:{message:"network error"}});});
 }
+/* ---------- Event tickets (Hub registration): fields on an activity, sync after "Post on the Hub", cancel flow ----------
+   Every RPC here is wrapped: a failure is shown in the Hub status line (and a banner), never thrown, and never
+   blocks saving the tracker. Server text is escaped with h() where it is drawn. Dates are kept as typed (Jeddah time). */
+function tkNorm(t){
+  t=t&&typeof t==="object"?t:{};
+  function fee(v){if(v===null||v===undefined||v===""||typeof v==="boolean")return null;var n=+v;return isFinite(n)&&n>=0&&n<=9999999&&Math.abs(n*100-Math.round(n*100))<1e-6?n:null;}
+  var cap=(t.capacity===null||t.capacity===undefined||t.capacity===""||typeof t.capacity==="boolean")?null:+t.capacity;
+  cap=isFinite(cap)&&cap>=1&&cap<=999999&&Math.floor(cap)===cap?cap:null;
+  function dt(v){return typeof v==="string"&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v)?v:"";}
+  return {on:!!t.on,feeMember:fee(t.feeMember),feeGuest:fee(t.feeGuest),capacity:cap,
+    opens:dt(t.opens),closes:dt(t.closes),
+    note:typeof t.note==="string"?t.note.slice(0,2000):"",checkinOpen:!!t.checkinOpen,synced:!!t.synced,cancelled:!!t.cancelled};}
+function tkOn(o){return !!(o&&o.ticketing&&o.ticketing.on);}
+/* on now, or a Hub event was created for it earlier (and not cancelled since): the cancel triggers must still work after "Sell tickets" is off */
+function tkHas(o){return !!(o&&o.ticketing&&(o.ticketing.on||o.ticketing.synced)&&!o.ticketing.cancelled);}
+/* BOTH fees entered (0 counts); a blank or repaired-to-null fee is "not entered", never a silent 0 */
+function tkFeesIn(t){return !!t&&t.feeMember!=null&&t.feeGuest!=null;}
+/* all seven keys, explicit nulls for cleared values (the sync has patch semantics and JSON drops undefined) */
+function tkParams(t){
+  t=tkNorm(t);var note=String(t.note||"").trim();
+  return {fee_member_sar:t.feeMember==null?0:t.feeMember,fee_guest_sar:t.feeGuest==null?0:t.feeGuest,
+    capacity:t.capacity==null?null:t.capacity,registration_opens_at:t.opens?t.opens:null,
+    registration_closes_at:t.closes?t.closes:null,checkin_open:!!t.checkinOpen,payment_note:note?note:null};}
+function tkMsg(e){
+  var m=e&&typeof e==="object"?String(e.message||e.error_description||""):String(e||"");
+  if(e&&typeof e==="object"&&e.code==="42501")m="You don't have permission to do that.";
+  m=m.replace(/^\s*(?:TKT|LEDGER)_[A-Z_]+:\s*/,"").trim();
+  if(!m||/failed to fetch|networkerror|load failed/i.test(m))m="Couldn't reach the Hub. Check your connection and try again.";
+  return m.slice(0,300);}
+function tkCtl(o){
+  if(MODE!=="cloud")return "";
+  var t=(o.ticketing&&typeof o.ticketing==="object")?o.ticketing:tkNorm(null),id=h(o.id);
+  function inp(f,label,type,val,extra){return '<label class="tkf">'+label+'<input class="f'+(f==="note"?" tkwide":"")+'" type="'+type+'" data-tk="'+id+'|'+f+'" value="'+h(val==null?"":val)+'"'+(extra||"")+'></label>';}
+  var sw='<label class="hubsw" title="Let members and guests register for this activity on the Hub and get a ticket"><input type="checkbox" data-tk="'+id+'|on"'+(t.on?" checked":"")+'> Sell tickets (registration)</label>';
+  if(!t.on)return '<div class="hubctl sm tkctl">'+sw+'</div>';
+  return '<div class="hubctl sm tkctl">'+sw+
+    inp("feeMember","Member fee (SAR)","text",t.feeMember,' inputmode="decimal" placeholder="0 = free" aria-label="Member fee in SAR"')+
+    inp("feeGuest","Guest fee (SAR)","text",t.feeGuest,' inputmode="decimal" placeholder="0 = free" aria-label="Guest fee in SAR"')+
+    inp("capacity","Seats","text",t.capacity,' inputmode="numeric" placeholder="no limit" aria-label="Seats (blank for no limit)"')+
+    inp("opens","Registration opens","datetime-local",t.opens,' aria-label="Registration opens (Jeddah time, optional)"')+
+    inp("closes","Registration closes","datetime-local",t.closes,' aria-label="Registration closes (Jeddah time)"')+
+    inp("note","Payment instructions","text",t.note,' maxlength="2000" placeholder="e.g. bank transfer details" aria-label="Payment instructions"')+
+    '<label class="hubsw"><input type="checkbox" data-tk="'+id+'|checkinOpen"'+(t.checkinOpen?" checked":"")+'> Check-in open</label></div>';}
+/* the first sync gives tickets to the Hub registrations made before "Sell tickets" was on (ticketing_sync_event) */
+function tkBfText(s){
+  var t=s.bf?(s.bf===1?"1 Hub registration got a ticket":s.bf+" Hub registrations got tickets"):"";
+  if(s.bfs)t+=(t?"; ":"")+(s.bfs===1?"1 Hub registration could not get one":s.bfs+" Hub registrations could not get one")+" (check them in the ticket console)";
+  return t+".";}
+function tkStText(ref,o){
+  if(o&&o.ticketing&&o.ticketing.cancelled&&o.ticketing.on)return ' · This event was cancelled on the Hub. To sell tickets again, create a new activity.';
+  if(!tkHas(o))return "";
+  var s=TKST[ref];
+  if(s&&s.k==="busy")return ' · Updating tickets…';
+  if(s&&s.k==="err")return ' · <span class="bad">Tickets: '+h(s.t)+'</span>';
+  if(!tkOn(o))return "";
+  if(!tkFeesIn(o.ticketing))return ' · <span class="bad">Enter both fees (0 = free)</span>';
+  if(!(o.hub&&o.hub.on))return ' · <span class="bad">Tickets: turn on Post on the Hub to open registration</span>';
+  if(!s)return ' · Tickets: will sync shortly';
+  if(s.k==="cancelled")return ' · '+h(s.t);
+  var x=' · <span class="good">Tickets on</span>';
+  if(s.bf||s.bfs)x+=' · '+(s.bfs?'<span class="bad">'+h(tkBfText(s))+'</span>':h(tkBfText(s)));
+  if(s.code)x+=' · Ledger event '+h(s.code);
+  if(s.note)x+=' · '+h(s.note);
+  if(s.change)x+=' · '+h(s.change);
+  if(/^https:\/\//.test(s.link||""))x+=' · <a href="'+h(s.link)+'" target="_blank" rel="noopener">Registration link</a>';
+  return x;}
+/* an activity form field changed (data-tk="ID|field"): validate, store, and queue the Hub post + sync */
+function tkField(el){
+  var p=String(el.dataset.tk).split("|"),o=act(p[0]),f=p[1];if(!o)return;
+  var t=o.ticketing=tkNorm(o.ticketing),v=(el.type==="checkbox")?!!el.checked:String(el.value==null?"":el.value).trim(),bad="";
+  if(f==="feeMember"||f==="feeGuest"){if(v==="")v=null;else if(!/^\d{1,7}(\.\d{1,2})?$/.test(v))bad="Fees must be 0 or more, with at most 2 decimals (SAR). Use 0 for a free event.";else v=+v;}
+  else if(f==="capacity"){if(v==="")v=null;else if(!/^\d{1,6}$/.test(v)||+v<1)bad="Seats must be a whole number of 1 or more, or empty for no limit.";else v=+v;}
+  else if(f==="closes"||f==="opens"){
+    if(v!==""&&!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v))bad="Enter the date and time registration "+(f==="opens"?"opens":"closes")+" (Jeddah time).";
+    else{var oo=f==="opens"?v:t.opens,cc=f==="closes"?v:t.closes;if(oo&&cc&&cc<=oo)bad="Registration must close after it opens.";}}
+  else if(f==="note"){if(v.length>2000)bad="Payment instructions can be up to 2000 characters.";}
+  else if(f!=="on"&&f!=="checkinOpen")return;
+  if(bad){banner={kind:"warn",text:bad};render();return;}
+  if(f==="on"&&v===false&&tkHas(o)&&MODE==="cloud"&&SB){
+    /* turning sales off ends the Hub event: ask first; if declined or the cancel fails, "Sell tickets" stays ON */
+    tkCancelFlow(o.id,"disabled").then(function(r){var o2=act(p[0]);if(r.proceed&&o2&&o2.ticketing){o2.ticketing.on=false;o2.ticketing.synced=false;markDirty();}render();});
+    return;}
+  t[f]=v;markDirty();render();
+  if(MODE==="cloud")hubQueue("act",o.id,f==="on"||f==="checkinOpen"?300:900);}
+/* send the ticketing settings; one call at a time per activity, identical repeats collapse, a changed value follows once */
+function tkSync(id){
+  var o=act(id),ref="act:"+id;
+  if(!SB||MODE!=="cloud"||!tkOn(o)||!(o.hub&&o.hub.on)||o.status==="Cancelled")return Promise.resolve();
+  if(o.ticketing.cancelled||!tkFeesIn(o.ticketing)){hubStPaint(ref,"act");return Promise.resolve();}   // cancelled on the Hub, or a fee missing: nothing is sent
+  var params=tkParams(o.ticketing),key=JSON.stringify(params),fl=TKFLY[ref];
+  if(fl){if(fl.key!==key)TKAGAIN[ref]=true;return fl.p;}
+  var p;
+  TKST[ref]={k:"busy"};
+  try{p=Promise.resolve(SB.rpc("ticketing_sync_event",{p_tracker_ref:ref,p_params:params}));}catch(e){p=Promise.reject(e);}
+  p=p.then(function(r){
+    if(r&&r.error)TKST[ref]={k:"err",t:tkMsg(r.error)};
+    else{var d=(r&&r.data)||{},oa=act(id);if(oa&&oa.ticketing&&!oa.ticketing.synced){oa.ticketing.synced=true;markDirty();}
+      TKST[ref]={k:"ok",code:d.ledger_event_code||"",note:d.ledger_event_note||"",change:d.change_note||"",link:d.registration_link||"",bf:Math.max(0,Math.floor(+d.backfilled||0)),bfs:Math.max(0,Math.floor(+d.backfill_skipped||0))};}
+  },function(e){TKST[ref]={k:"err",t:tkMsg(e)};}).then(function(){
+    delete TKFLY[ref];
+    var s=TKST[ref];
+    if(s&&s.k==="err"){banner={kind:"warn",text:"Tickets for "+id+": "+s.t};hubRender();}
+    else if(s&&s.k==="ok"&&(s.bf||s.bfs)){banner={kind:s.bfs?"warn":"info",text:"Tickets for "+id+": "+tkBfText(s)};hubRender();}
+    hubStPaint(ref,"act");
+    if(TKAGAIN[ref]){delete TKAGAIN[ref];return tkSync(id);}
+  }).catch(function(){delete TKFLY[ref];TKST[ref]={k:"err",t:"Something went wrong while updating the tickets."};ls(function(){hubStPaint(ref,"act");});});
+  TKFLY[ref]={key:key,p:p};
+  return p;}
+/* how many tickets have been issued for this activity (ticketing_event_summary, officers); n=null when it cannot be read */
+function tkIssued(ref,id){
+  var p;try{p=Promise.resolve(SB.rpc("ticketing_event_summary"));}catch(e){p=Promise.reject(e);}
+  return p.then(function(r){
+    if(!r||r.error||!Array.isArray(r.data))return {n:null,why:tkMsg(r&&r.error)};
+    var link=HUBLINK[ref],row=r.data.filter(function(x){return x&&(String(x.ticket_ref||"").toUpperCase()===String(id).toUpperCase()||(link&&x.announcement_id===link.id));})[0];
+    return row?{n:+row.sold||0}:{n:0,none:true};
+  },function(e){return {n:null,why:tkMsg(e)};});}
+function tkCancelCall(ref,id,why){
+  var reason={deleted:"Activity deleted in the Tracker.",cancelled:"Activity cancelled in the Tracker.",unpublished:"Activity taken off the Hub in the Tracker.",disabled:"Ticket sales turned off in the Tracker."}[why]||"Activity changed in the Tracker.";
+  function unsync(){var oa=act(id);if(oa&&oa.ticketing&&oa.ticketing.synced){oa.ticketing.synced=false;markDirty();}}
+  function done(){var oa=act(id);if(oa&&oa.ticketing){oa.ticketing.synced=false;oa.ticketing.cancelled=true;markDirty();}}
+  /* a failed cancel ABORTS the change: the activity keeps its tickets, the officer sees a plain reason */
+  function failed(m,noAccess){
+    if(noAccess)m="Only a Hub admin can cancel a ticketed event. Ask a Hub admin to cancel it from the console, then try again.";
+    TKST[ref]={k:"err",t:m};banner={kind:"warn",text:"Nothing was changed. The Hub event for "+id+" was NOT cancelled: "+m};return {proceed:false,called:true,error:m};}
+  var p;try{p=Promise.resolve(SB.rpc("ticketing_cancel_event",{p_tracker_ref:ref,p_reason:reason}));}catch(e){p=Promise.reject(e);}
+  return p.then(function(r){
+    if(r&&r.error){
+      var em=String(r.error.message||"");
+      if(/^\s*TKT_NOT_FOUND/.test(em)){unsync();banner={kind:"info",text:"No ticket sales were set up on the Hub for "+id+", so there was nothing to cancel."};return {proceed:true,called:true};}
+      return failed(tkMsg(r.error),/^\s*TKT_NO_ACCESS/.test(em));}
+    var d=(r&&r.data)||{},t=d.already_cancelled?"The event was already cancelled on the Hub.":"Event cancelled on the Hub: "+(+d.cancelled||0)+" ticket(s) cancelled"+((+d.refund_due)?", "+(+d.refund_due)+" refund(s) due":"")+".";
+    done();TKST[ref]={k:"cancelled",t:t};banner={kind:"info",text:t};
+    return {proceed:true,called:true};
+  },function(e){return failed(tkMsg(e),false);});}
+/* ask first (stating the issued-ticket count), then cancel the Hub event. proceed=false when the officer says no. */
+function tkCancelFlow(id,why){
+  var o=act(id),ref="act:"+id;
+  if(!SB||MODE!=="cloud"||!tkHas(o))return Promise.resolve({proceed:true,called:false});
+  if(TKC[ref])return TKC[ref];
+  var verb={deleted:"Deleting this activity",cancelled:"Cancelling this activity",unpublished:"Taking this activity off the Hub",disabled:"Turning off ticket sales"}[why]||"This change";
+  var p=tkIssued(ref,id).then(function(q){
+    var msg=q.n==null?"The number of tickets already issued for "+id+" could not be read ("+q.why+"). ":q.none?"No ticket record was found on the Hub for "+id+" (no tickets issued). ":"Tickets already issued for "+id+": "+q.n+". ";
+    msg+=verb+" also cancels the event on the Hub: registration closes and its tickets are cancelled (paid tickets are marked refund due). Continue?";
+    var yes=false;try{yes=window.confirm(msg)===true;}catch(e){yes=false;}
+    if(!yes)return {proceed:false,called:false};
+    return tkCancelCall(ref,id,why);
+  }).catch(function(){banner={kind:"warn",text:"Could not check the tickets for "+id+". Nothing was changed."};return {proceed:false,called:false};});
+  TKC[ref]=p;var clr=function(){delete TKC[ref];};p.then(clr,clr);
+  return p;}
+function requestDelete(key){
+  var p=String(key).split(":"),k=p[0],id=p.slice(1).join(":");
+  if(k==="act"&&MODE==="cloud"&&SB&&tkHas(act(id))){
+    return tkCancelFlow(id,"deleted").then(function(r){if(r.proceed&&act(id))del(key);render();return r;});
+  }
+  del(key);return Promise.resolve({proceed:true,called:false});}
 function cloudBoot(){
   var C=window.TRACKER_CLOUD;MODE="cloud";
   gate('<p>Signing you in…</p>');
@@ -1732,8 +1894,14 @@ app.addEventListener("change",function(ev){
     if(ai.projectIds.indexOf(pv)<0)ai.projectIds.push(pv);
     markDirty();render();return;
   }
+  if(el.dataset.tk){tkField(el);return;}
   if(el.dataset.hub||el.dataset.hubcat){var hp=(el.dataset.hub||el.dataset.hubcat).split("|"),ho=hubObj(hp[0],hp[1]);
-    if(ho){ho.hub=ho.hub||{};if(el.dataset.hub){ho.hub.on=el.checked;if(!ho.hub.cat)ho.hub.cat=hubDefaultCat(hp[0],ho);}else ho.hub.cat=el.value;markDirty();render();hubQueue(hp[0],hp[1],300);}
+    if(ho){ho.hub=ho.hub||{};
+      if(el.dataset.hub&&!el.checked&&hp[0]==="act"&&ho.hub.on&&tkHas(ho)&&MODE==="cloud"&&SB){
+        /* taking a ticketed activity off the Hub cancels its event: ask first, with the issued-ticket count */
+        tkCancelFlow(ho.id,"unpublished").then(function(r){if(r.proceed){ho.hub.on=false;markDirty();render();hubQueue("act",ho.id,300);}else render();});
+        return;}
+      if(el.dataset.hub){ho.hub.on=el.checked;if(!ho.hub.cat)ho.hub.cat=hubDefaultCat(hp[0],ho);}else ho.hub.cat=el.value;markDirty();render();hubQueue(hp[0],hp[1],300);}
     return;}
   if(el.dataset.pmonth){var pmid=el.dataset.pmonth,pmp=proj(pmid),pma=projActs(pmid),pmv=el.value;
     if(!pma.length){if(pmv&&pmp)S.activities.push({id:nextId(S.activities,"E",3),title:pmp.name||pmid,category:"",projectId:pmid,date:"",month:pmv,owner:pmp.lead||"",status:"Proposed"});}
@@ -1748,6 +1916,12 @@ app.addEventListener("change",function(ev){
   if(el.dataset.flt){U.pf[el.dataset.flt]=el.value;render();return;}
   if(el.dataset.tflt){U.tf[el.dataset.tflt]=el.value;render();return;}
   if(el.dataset.a==="caltasks"){U.calTasks=el.checked;render();return;}
+  if(el.dataset.e==="act"&&el.dataset.f==="status"&&el.value==="Cancelled"){
+    var cs0=act(el.dataset.id);
+    if(cs0&&cs0.status!=="Cancelled"&&MODE==="cloud"&&SB&&tkHas(cs0)){
+      /* cancelling a ticketed activity cancels its Hub event: ask first, with the issued-ticket count */
+      tkCancelFlow(cs0.id,"cancelled").then(function(r){if(r.proceed)onField(el);else render();});
+      return;}}
   if(el.dataset.e)onField(el);
 });
 app.addEventListener("input",function(ev){if(ev.target.dataset&&(ev.target.dataset.dp||ev.target.dataset.dr)&&MODE!=="readonly"){var kk=(ev.target.dataset.dp||ev.target.dataset.dr).split("|"),ai=agendaItem(kk[0]);if(ai){var bb=ensureDisc(ai,+kk[1]);if(ev.target.dataset.dp)bb.p=ev.target.value;else bb.r[+kk[2]]=ev.target.value;syncDisc(ai);markDirty();renderPreview();}return;}if(ev.target.dataset&&ev.target.dataset.li&&MODE!=="readonly"){var lp=ev.target.dataset.li.split("|"),la=liOwner(lp[0]);if(la){la[lp[1]][+lp[2]]=ev.target.value;syncLists(la);markDirty();renderPreview();}return;}if(ev.target.dataset&&ev.target.dataset.e&&MODE!=="readonly"){onLive(ev.target);return;}if(ev.target.id==="pq"){U.pf.q=ev.target.value;var pos=ev.target.selectionStart;render();var q=document.getElementById("pq");if(q){q.focus();q.setSelectionRange(pos,pos);}}});
@@ -1843,7 +2017,7 @@ app.addEventListener("click",function(ev){
       U.newProj="";markDirty();render();return;
     case "add-act":var ac={id:nextId(S.activities,"E",3),title:"",category:"",projectId:"",date:"",month:v||"",owner:"",status:"Idea"};S.activities.push(ac);markDirty();U.focus=["act",ac.id,"title"];render();return;
     case "add-person":var pp={id:nextId(S.people,"U",2),name:"",role:"",sn:""};S.people.push(pp);markDirty();U.focus=["person",pp.id,"name"];render();return;
-    case "del":if(U.confirm===b.dataset.k){U.confirm="";del(b.dataset.k);}else U.confirm=b.dataset.k;render();return;
+    case "del":if(U.confirm===b.dataset.k){U.confirm="";requestDelete(b.dataset.k);}else U.confirm=b.dataset.k;render();return;
     case "toggle":U.open[v]=!U.open[v];render();return;
     case "pane":U.pane=v;render();window.scrollTo(0,0);return;
     case "pmv":var pl=filteredProjects(),pc=proj(v);if(pc){if(b.dataset.col)pl=pl.filter(function(x){return x.status===pc.status;});var pi=pl.indexOf(pc),pn=pl[pi+(+b.dataset.d)];if(pn){var ia=S.projects.indexOf(pc),ib=S.projects.indexOf(pn);S.projects[ia]=pn;S.projects[ib]=pc;markDirty();render();}}return;
@@ -1991,6 +2165,7 @@ function normalize(){
       if(empty&&!ref){PATCHED=true;return false;}return true;});
     S.cleanEmpty1=true;
   }
+  S.activities.forEach(function(a){a.ticketing=tkNorm(a.ticketing);});
   sortPeople();
   /* older IDs like P01 become category IDs like ET-01 */
   var cc0=catCodes();
